@@ -1,0 +1,605 @@
+import SwiftUI
+
+struct MainScreen: View {
+    @ObservedObject var viewModel: MainViewModel
+    @State private var showMenu = false
+    @State private var editMode = false
+    @State private var editedWeights: [FoodEntry: String] = [:]
+    @State private var entryToDelete: FoodEntry?
+    @State private var macroBreakdown: IdentifiableNutrient?
+    @State private var macroTopFoods: IdentifiableNutrient?
+    @State private var quickAddEntry: FoodCache?
+    @State private var quickAddWeight: String = "100"
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Food input
+                    foodInputSection
+
+                    // Loading indicator
+                    if viewModel.isLoading {
+                        ProgressView("Анализ...")
+                            .padding()
+                    }
+
+                    // Error message
+                    if let error = viewModel.errorMessage {
+                        HStack {
+                            Text(error)
+                                .foregroundColor(.red)
+                                .font(.caption)
+                            Spacer()
+                            Button("✕") { viewModel.clearError() }
+                        }
+                        .padding(.horizontal)
+                    }
+
+                    // Today's entries
+                    foodEntriesTable
+
+                    // Progress sections
+                    if viewModel.dailyNorms != nil {
+                        macrosSection
+                        vitaminsSection
+                        mineralsSection
+                        fatDetailsSection
+                    }
+                }
+                .padding()
+            }
+            .background(Color(.systemGray6))
+            .navigationTitle("Питание от Андрюхи")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Menu {
+                        NavigationLink(destination: EditProfileScreen(viewModel: viewModel)) {
+                            Label("Профиль", systemImage: "person.circle")
+                        }
+                        NavigationLink(destination: SavedProductsScreen(viewModel: viewModel)) {
+                            Label("Сохранённые продукты", systemImage: "archivebox")
+                        }
+                        NavigationLink(destination: HistoryScreen(viewModel: viewModel)) {
+                            Label("История", systemImage: "clock")
+                        }
+                        NavigationLink(destination: StatisticsScreen(viewModel: viewModel)) {
+                            Label("Статистика", systemImage: "chart.bar")
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal")
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: HistoryScreen(viewModel: viewModel)) {
+                        Image(systemName: "clock.arrow.circlepath")
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $viewModel.showConfirmDialog) {
+            confirmFoodSheet
+        }
+        .sheet(isPresented: $viewModel.showEditDialog) {
+            editWeightSheet
+        }
+        .sheet(isPresented: $viewModel.showBarcodeWeightDialog) {
+            barcodeWeightSheet
+        }
+        .sheet(isPresented: $viewModel.showPhotoEditDialog) {
+            photoEditSheet
+        }
+        .sheet(isPresented: $viewModel.showSupplementDialog) {
+            supplementSheet
+        }
+        .alert("Добавить в приём пищи", isPresented: Binding(
+            get: { quickAddEntry != nil },
+            set: { if !$0 { quickAddEntry = nil } }
+        )) {
+            TextField("Вес (г)", text: $quickAddWeight)
+                .keyboardType(.numberPad)
+            Button("Добавить") {
+                if let entry = quickAddEntry, let w = Double(quickAddWeight), w > 0 {
+                    viewModel.quickAddFromCache(entry, weight: w)
+                    quickAddEntry = nil
+                    quickAddWeight = "100"
+                }
+            }
+            Button("Отмена", role: .cancel) {
+                quickAddEntry = nil
+            }
+        } message: {
+            if let entry = quickAddEntry {
+                let nutrients = viewModel.parseNutrients(entry.nutrientsPer100gJson)
+                let w = Double(quickAddWeight) ?? 100
+                let factor = w / 100.0
+                Text("\(entry.keyOriginal)\n\(String(format: "%.0f ккал • Б%.1f Ж%.1f У%.1f", nutrients.calories * factor, nutrients.protein * factor, nutrients.fat * factor, nutrients.carbs * factor))")
+            }
+        }
+    }
+
+    // MARK: - Food Input
+
+    private var suggestions: [FoodCache] {
+        let input = viewModel.foodInput.lowercased()
+        guard input.count >= 2 else { return [] }
+        let translit = transliterateToLatin(input)
+        return viewModel.cachedFoods.filter { cache in
+            cache.keyOriginal.lowercased().contains(input)
+            || cache.keyEn.lowercased().contains(input)
+            || cache.keyOriginal.lowercased().contains(translit)
+            || cache.keyEn.lowercased().contains(translit)
+        }.prefix(5).map { $0 }
+    }
+
+    private var foodInputSection: some View {
+        VStack(spacing: 10) {
+            HStack {
+                TextField("Что вы съели?", text: $viewModel.foodInput)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { viewModel.analyzeFood() }
+                Button(action: { viewModel.analyzeFood() }) {
+                    Image(systemName: "arrow.right.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.green)
+                }
+                .disabled(viewModel.foodInput.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isLoading)
+            }
+
+            // Suggestions from cache
+            if !suggestions.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(suggestions, id: \.keyNormalized) { entry in
+                        let nutrients = viewModel.parseNutrients(entry.nutrientsPer100gJson)
+                        Button {
+                            quickAddWeight = "100"
+                            quickAddEntry = entry
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(entry.keyOriginal)
+                                        .font(.subheadline)
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                    Text(String(format: "%.0f ккал • Б%.1f Ж%.1f У%.1f /100г", nutrients.calories, nutrients.protein, nutrients.fat, nutrients.carbs))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundColor(.blue)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
+                        if entry.keyNormalized != suggestions.last?.keyNormalized {
+                            Divider().padding(.horizontal, 12)
+                        }
+                    }
+                }
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray4)))
+            }
+
+            HStack(spacing: 12) {
+                NavigationLink(destination: BarcodeScannerScreen(viewModel: viewModel, mode: .food)) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "barcode.viewfinder")
+                        Text("Штрих-код")
+                    }
+                    .font(.subheadline)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.blue.opacity(0.1))
+                    .foregroundColor(.blue)
+                    .cornerRadius(8)
+                }
+                NavigationLink(destination: PhotoCaptureScreen(viewModel: viewModel)) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "camera")
+                        Text("Фото")
+                    }
+                    .font(.subheadline)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.green.opacity(0.1))
+                    .foregroundColor(.green)
+                    .cornerRadius(8)
+                }
+                NavigationLink(destination: BarcodeScannerScreen(viewModel: viewModel, mode: .supplement)) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "pills")
+                        Text("БАД")
+                    }
+                    .font(.subheadline)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.purple.opacity(0.1))
+                    .foregroundColor(.purple)
+                    .cornerRadius(8)
+                }
+                Spacer()
+            }
+        }
+    }
+
+    // MARK: - Food Table
+
+    private var foodEntriesTable: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Title + Edit button
+            HStack {
+                Text("Сегодня")
+                    .font(.headline)
+                Spacer()
+                if !viewModel.todayEntries.isEmpty {
+                    if editMode {
+                        Button("Отмена") {
+                            editMode = false
+                            editedWeights = [:]
+                        }
+                        .font(.subheadline)
+                        Button("Сохранить") {
+                            saveEditedWeights()
+                        }
+                        .font(.subheadline)
+                        .bold()
+                    } else {
+                        Button {
+                            editMode = true
+                            editedWeights = [:]
+                            for entry in viewModel.todayEntries {
+                                editedWeights[entry] = String(Int(entry.weightGrams))
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "pencil")
+                                Text("Редактировать")
+                            }
+                            .font(.caption)
+                        }
+                    }
+                }
+            }
+
+            if viewModel.todayEntries.isEmpty {
+                Text("Пока нет записей")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            } else {
+                // Header
+                HStack {
+                    if editMode {
+                        Spacer().frame(width: 24)
+                    }
+                    Text("Продукт").font(.caption).bold().frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Вес").font(.caption).bold().frame(width: 45)
+                    Text("Ккал").font(.caption).bold().frame(width: 40)
+                    Text("Б").font(.caption).bold().frame(width: 30)
+                    Text("Ж").font(.caption).bold().frame(width: 30)
+                    Text("У").font(.caption).bold().frame(width: 30)
+                }
+                .padding(.horizontal, 4)
+
+                ForEach(viewModel.todayEntries, id: \.self) { entry in
+                    let nutrients = viewModel.parseNutrients(entry.nutrientsJson)
+                    HStack {
+                        if editMode {
+                            Button {
+                                entryToDelete = entry
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.red)
+                                    .font(.system(size: 16))
+                            }
+                            .frame(width: 24)
+                        }
+                        HStack(spacing: 4) {
+                            if entry.fromCache {
+                                Circle().fill(Color.orange).frame(width: 6, height: 6)
+                            }
+                            Text(entry.foodName).font(.caption2).fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if editMode {
+                            TextField("", text: weightBinding(for: entry))
+                                .font(.caption2)
+                                .keyboardType(.numberPad)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 45)
+                        } else {
+                            Text("\(Int(entry.weightGrams))").font(.caption2).lineLimit(1).frame(width: 45)
+                        }
+                        Text("\(Int(nutrients.calories))").font(.caption2).lineLimit(1).frame(width: 40)
+                        Text(String(format: "%.1f", nutrients.protein)).font(.caption2).lineLimit(1).frame(width: 30)
+                        Text(String(format: "%.1f", nutrients.fat)).font(.caption2).lineLimit(1).frame(width: 30)
+                        Text(String(format: "%.1f", nutrients.carbs)).font(.caption2).lineLimit(1).frame(width: 30)
+                    }
+                    .padding(.horizontal, 4)
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button("Изменить вес") { viewModel.showEditWeight(for: entry) }
+                        Button("Удалить", role: .destructive) { viewModel.deleteEntry(entry) }
+                    }
+                }
+
+                // Totals row
+                Divider()
+                HStack {
+                    if editMode {
+                        Spacer().frame(width: 24)
+                    }
+                    Text("Итого").font(.caption).bold().frame(maxWidth: .infinity, alignment: .leading)
+                    Text("\(Int(viewModel.todayEntries.reduce(0) { $0 + Int($1.weightGrams) }))").font(.caption).bold().lineLimit(1).frame(width: 45)
+                    Text("\(Int(viewModel.todayTotals.calories))").font(.caption).bold().lineLimit(1).frame(width: 40)
+                    Text(String(format: "%.1f", viewModel.todayTotals.protein)).font(.caption).bold().lineLimit(1).frame(width: 30)
+                    Text(String(format: "%.1f", viewModel.todayTotals.fat)).font(.caption).bold().lineLimit(1).frame(width: 30)
+                    Text(String(format: "%.1f", viewModel.todayTotals.carbs)).font(.caption).bold().lineLimit(1).frame(width: 30)
+                }
+                .padding(.horizontal, 4)
+            }
+        }
+        .padding()
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray5)).shadow(color: .black.opacity(0.08), radius: 3, y: 1))
+        .alert("Удалить?", isPresented: Binding(
+            get: { entryToDelete != nil },
+            set: { if !$0 { entryToDelete = nil } }
+        )) {
+            Button("Отмена", role: .cancel) { entryToDelete = nil }
+            Button("Удалить", role: .destructive) {
+                if let entry = entryToDelete {
+                    viewModel.deleteEntry(entry)
+                    editedWeights.removeValue(forKey: entry)
+                    entryToDelete = nil
+                    if viewModel.todayEntries.isEmpty { editMode = false }
+                }
+            }
+        } message: {
+            if let entry = entryToDelete {
+                Text("Удалить \(entry.foodName) из дневника?")
+            }
+        }
+    }
+
+    private func weightBinding(for entry: FoodEntry) -> Binding<String> {
+        Binding(
+            get: { editedWeights[entry] ?? String(Int(entry.weightGrams)) },
+            set: { editedWeights[entry] = $0 }
+        )
+    }
+
+    private func saveEditedWeights() {
+        var changes: [FoodEntry: Double] = [:]
+        for (entry, weightStr) in editedWeights {
+            if let newWeight = Double(weightStr), newWeight != entry.weightGrams {
+                changes[entry] = newWeight
+            }
+        }
+        if !changes.isEmpty {
+            viewModel.updateMultipleWeights(changes)
+        }
+        editMode = false
+        editedWeights = [:]
+    }
+
+    // MARK: - Progress Sections
+
+    private var macrosSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Макронутриенты").font(.headline)
+            let nutrients = viewModel.todayTotals.macrosList()
+            let norms = viewModel.dailyNorms?.macrosList() ?? []
+            ForEach(Array(zip(nutrients, norms)), id: \.0.key) { (nutrient, norm) in
+                NutrientProgressBar(
+                    key: nutrient.key,
+                    name: nutrient.name,
+                    value: nutrient.value,
+                    target: norm.value,
+                    hasTopFoods: NutrientTopFoods.data[nutrient.key] != nil,
+                    onTap: {
+                        macroBreakdown = IdentifiableNutrient(key: nutrient.key, name: nutrient.name)
+                    },
+                    onInfoTap: {
+                        macroTopFoods = IdentifiableNutrient(key: nutrient.key, name: nutrient.name)
+                    }
+                )
+            }
+        }
+        .padding()
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray5)).shadow(color: .black.opacity(0.08), radius: 3, y: 1))
+        .sheet(item: $macroBreakdown) { item in
+            NutrientBreakdownSheet(
+                nutrientKey: item.key,
+                nutrientName: item.name,
+                entries: viewModel.todayEntries,
+                parseNutrients: { viewModel.parseNutrients($0) }
+            )
+        }
+        .sheet(item: $macroTopFoods) { item in
+            NutrientTopFoodsSheet(
+                nutrientKey: item.key,
+                nutrientName: item.name
+            )
+        }
+    }
+
+    private var vitaminsSection: some View {
+        NutrientProgressSection(
+            title: "Витамины",
+            nutrients: viewModel.todayTotals.vitaminsList(),
+            norms: viewModel.dailyNorms?.vitaminsList() ?? [],
+            entries: viewModel.todayEntries,
+            parseNutrients: { viewModel.parseNutrients($0) },
+            expandedByDefault: false
+        )
+    }
+
+    private var mineralsSection: some View {
+        NutrientProgressSection(
+            title: "Минералы",
+            nutrients: viewModel.todayTotals.mineralsList(),
+            norms: viewModel.dailyNorms?.mineralsList() ?? [],
+            entries: viewModel.todayEntries,
+            parseNutrients: { viewModel.parseNutrients($0) },
+            expandedByDefault: false
+        )
+    }
+
+    private var fatDetailsSection: some View {
+        NutrientProgressSection(
+            title: "Жиры (детализация)",
+            nutrients: viewModel.todayTotals.fatDetailsList(),
+            norms: viewModel.dailyNorms?.fatDetailsList() ?? [],
+            entries: viewModel.todayEntries,
+            parseNutrients: { viewModel.parseNutrients($0) },
+            expandedByDefault: false
+        )
+    }
+
+    // MARK: - Sheets
+
+    private var confirmFoodSheet: some View {
+        NavigationStack {
+            if let food = viewModel.pendingFood {
+                VStack(spacing: 16) {
+                    Text(food.foodName).font(.headline)
+                    HStack {
+                        Text("Вес (г):")
+                        TextField("", value: $viewModel.pendingFoodWeight, format: .number)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(.decimalPad)
+                            .frame(width: 80)
+                    }
+                    let nutrients = food.weightGrams > 0 && viewModel.pendingFoodWeight != food.weightGrams
+                        ? food.nutrients * (viewModel.pendingFoodWeight / food.weightGrams)
+                        : food.nutrients
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Калории: \(Int(nutrients.calories)) ккал")
+                        Text("Белки: \(String(format: "%.1f", nutrients.protein)) г")
+                        Text("Жиры: \(String(format: "%.1f", nutrients.fat)) г")
+                        Text("Углеводы: \(String(format: "%.1f", nutrients.carbs)) г")
+                    }
+                    .font(.subheadline)
+                    Spacer()
+                }
+                .padding()
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Отмена") { viewModel.dismissConfirmDialog() }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Добавить") { viewModel.confirmAddFood() }
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private var editWeightSheet: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Text("Изменить вес").font(.headline)
+                TextField("Вес (г)", text: $viewModel.editWeight)
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.numberPad)
+                Spacer()
+            }
+            .padding()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Отмена") { viewModel.dismissEditDialog() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Сохранить") { viewModel.confirmEditWeight() }
+                }
+            }
+        }
+        .presentationDetents([.height(200)])
+    }
+
+    private var barcodeWeightSheet: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Text(viewModel.barcodeProductName ?? "").font(.headline)
+                HStack {
+                    Text("Вес (г):")
+                    TextField("", text: $viewModel.barcodeWeight)
+                        .textFieldStyle(.roundedBorder)
+                        .keyboardType(.numberPad)
+                        .frame(width: 80)
+                }
+                Spacer()
+            }
+            .padding()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Отмена") { viewModel.dismissBarcodeDialog() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Добавить") { viewModel.confirmBarcodeAdd() }
+                }
+            }
+        }
+        .presentationDetents([.height(200)])
+    }
+
+    private var photoEditSheet: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Text("Редактировать").font(.headline)
+                TextField("Название", text: $viewModel.photoFoodName)
+                    .textFieldStyle(.roundedBorder)
+                HStack {
+                    Text("Вес (г):")
+                    TextField("", text: $viewModel.photoWeight)
+                        .textFieldStyle(.roundedBorder)
+                        .keyboardType(.numberPad)
+                        .frame(width: 80)
+                }
+                Spacer()
+            }
+            .padding()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Отмена") { viewModel.dismissPhotoEditDialog() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Анализ") { viewModel.confirmPhotoAnalysis() }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private var supplementSheet: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Text(viewModel.supplementName ?? "БАД").font(.headline)
+                Text("Порция: \(viewModel.supplementServingSize)").font(.subheadline).foregroundColor(.secondary)
+                HStack {
+                    Text("Количество порций:")
+                    TextField("", text: $viewModel.supplementServings)
+                        .textFieldStyle(.roundedBorder)
+                        .keyboardType(.numberPad)
+                        .frame(width: 60)
+                }
+                Spacer()
+            }
+            .padding()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Отмена") { viewModel.dismissSupplementDialog() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Добавить") { viewModel.confirmSupplementAdd() }
+                }
+            }
+        }
+        .presentationDetents([.height(250)])
+    }
+}

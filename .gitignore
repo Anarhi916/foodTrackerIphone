@@ -1,0 +1,40 @@
+# Xcode
+build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+xcuserdata/
+
+# Swift Package Manager
+.build/
+Packages/
+Package.pins
+Package.resolved
+
+# CocoaPods
+Pods/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# OS files
+.DS_Store
+*.swp
+*~
+
+# Xcode playground
+timeline.xctimeline
+playground.xcworkspace
+
+# Swift protobuf generated
+*.pb.swift
+
+# Local settings
+local.properties
+
+# Secrets
+NutritionTracker/Config.plist
