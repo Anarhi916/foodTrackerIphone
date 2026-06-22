@@ -465,28 +465,56 @@ struct MainScreen: View {
     private var confirmFoodSheet: some View {
         NavigationStack {
             if let food = viewModel.pendingFood {
-                VStack(spacing: 16) {
-                    Text(food.foodName).font(.headline)
-                    HStack {
-                        Text("Вес (г):")
-                        TextField("", value: $viewModel.pendingFoodWeight, format: .number)
-                            .textFieldStyle(.roundedBorder)
-                            .keyboardType(.decimalPad)
-                            .frame(width: 80)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(food.foodName).font(.headline)
+                        HStack {
+                            Text("Вес (г):")
+                            TextField("", value: $viewModel.pendingFoodWeight, format: .number)
+                                .textFieldStyle(.roundedBorder)
+                                .keyboardType(.decimalPad)
+                                .frame(width: 80)
+                        }
+                        let nutrients = food.weightGrams > 0 && viewModel.pendingFoodWeight != food.weightGrams
+                            ? food.nutrients * (viewModel.pendingFoodWeight / food.weightGrams)
+                            : food.nutrients
+
+                        Divider()
+                        nutrientRow("Калории", String(format: "%.0f ккал", nutrients.calories))
+                        nutrientRow("Белки", String(format: "%.1f г", nutrients.protein))
+                        nutrientRow("Жиры", String(format: "%.1f г", nutrients.fat))
+                        nutrientRow("Углеводы", String(format: "%.1f г", nutrients.carbs))
+                        nutrientRow("Клетчатка", String(format: "%.1f г", nutrients.fiber))
+
+                        let fatDetails = nutrients.fatDetailsList().filter { $0.value > 0 }
+                        if !fatDetails.isEmpty {
+                            Divider()
+                            Text("Жиры (детально):").font(.caption).bold()
+                            ForEach(fatDetails, id: \.key) { item in
+                                nutrientRow(item.name, String(format: "%.2f", item.value))
+                            }
+                        }
+
+                        let vitamins = nutrients.vitaminsList().filter { $0.value > 0 }
+                        if !vitamins.isEmpty {
+                            Divider()
+                            Text("Витамины:").font(.caption).bold()
+                            ForEach(vitamins, id: \.key) { item in
+                                nutrientRow(item.name, String(format: "%.2f", item.value))
+                            }
+                        }
+
+                        let minerals = nutrients.mineralsList().filter { $0.value > 0 }
+                        if !minerals.isEmpty {
+                            Divider()
+                            Text("Минералы:").font(.caption).bold()
+                            ForEach(minerals, id: \.key) { item in
+                                nutrientRow(item.name, String(format: "%.2f", item.value))
+                            }
+                        }
                     }
-                    let nutrients = food.weightGrams > 0 && viewModel.pendingFoodWeight != food.weightGrams
-                        ? food.nutrients * (viewModel.pendingFoodWeight / food.weightGrams)
-                        : food.nutrients
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Калории: \(Int(nutrients.calories)) ккал")
-                        Text("Белки: \(String(format: "%.1f", nutrients.protein)) г")
-                        Text("Жиры: \(String(format: "%.1f", nutrients.fat)) г")
-                        Text("Углеводы: \(String(format: "%.1f", nutrients.carbs)) г")
-                    }
-                    .font(.subheadline)
-                    Spacer()
+                    .padding()
                 }
-                .padding()
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Отмена") { viewModel.dismissConfirmDialog() }
@@ -497,7 +525,15 @@ struct MainScreen: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
+    }
+
+    private func nutrientRow(_ name: String, _ value: String) -> some View {
+        HStack {
+            Text(name).font(.subheadline)
+            Spacer()
+            Text(value).font(.subheadline).fontWeight(.medium)
+        }
     }
 
     private var editWeightSheet: some View {

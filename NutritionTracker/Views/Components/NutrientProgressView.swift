@@ -76,6 +76,7 @@ struct NutrientProgressBar: View {
     let value: Double
     let target: Double
     let hasTopFoods: Bool
+    var upperRatio: Double = 1.5
     let onTap: () -> Void
     let onInfoTap: () -> Void
 
@@ -85,13 +86,12 @@ struct NutrientProgressBar: View {
     }
 
     private var progressColor: Color {
-        switch percentage {
-        case _ where percentage > 1.3: return .red
-        case 1.0...1.3: return .orange
-        case 0.8..<1.0: return .green
-        case 0.4..<0.8: return .yellow
-        default: return .red
-        }
+        let ratio = percentage
+        if ratio > upperRatio * 1.3 { return .red }
+        if ratio > upperRatio { return .orange }
+        if ratio >= 0.8 { return .green }
+        if ratio >= 0.4 { return .yellow }
+        return .red
     }
 
     private var displayPercentage: String {

@@ -27,7 +27,7 @@ struct APIConfig {
     static let textModels = ["google/gemini-2.5-flash-lite"]
     static let visionModels = ["google/gemini-2.5-flash-lite"]
     static let photoModels = ["google/gemini-2.5-flash"]
-    static let normsModels = ["google/gemini-2.5-pro-preview"]
+    static let normsModels = ["google/gemini-2.5-pro", "google/gemini-2.5-flash"]
 
     // MARK: - Base URLs
     static let openRouterBaseURL = "https://openrouter.ai/api/v1/chat/completions"

@@ -166,7 +166,7 @@ private struct NutrientStatCard: View {
                 }()
                 let pctColor: Color = {
                     guard let p = pct else { return .primary }
-                    if p >= 90 { return .blue }
+                    if p >= 90 { return .green }
                     if p >= 50 { return .primary }
                     return .red
                 }()

@@ -68,6 +68,7 @@ class MainViewModel: ObservableObject {
         todayTotals = todayEntries.reduce(NutrientData()) { acc, entry in
             acc + repo.parseNutrients(entry.nutrientsJson)
         }
+        cachedFoods = repo.getAllCachedFoods()
     }
 
     private func startAutoRefresh() {

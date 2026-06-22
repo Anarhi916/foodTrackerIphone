@@ -76,8 +76,22 @@ struct OpenRouterResponseMessage: Decodable {
 }
 
 struct OpenRouterError: Decodable {
-    let code: Int?
+    let code: String?
     let message: String?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        message = try container.decodeIfPresent(String.self, forKey: .message)
+        if let intCode = try? container.decodeIfPresent(Int.self, forKey: .code) {
+            code = String(intCode)
+        } else {
+            code = try container.decodeIfPresent(String.self, forKey: .code)
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case code, message
+    }
 }
 
 // MARK: - USDA Models

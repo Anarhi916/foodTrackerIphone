@@ -382,6 +382,8 @@ Return ONLY a JSON object:
         let weightGrams = (map["weight_grams"] as? NSNumber)?.doubleValue ?? 200.0
         let per100g = nutrientDataFromMap(map)
 
+        db.saveToCache(keyOriginal: foodName, keyEn: nameEn, nutrientsPer100g: per100g)
+
         return FoodAnalysisResult(foodName: foodName, foodNameEn: nameEn, weightGrams: weightGrams, nutrients: per100g, fromCache: false)
     }
 
@@ -509,6 +511,11 @@ Return ONLY a JSON object:
 For the food product "\(foodNameEn)" with total fat \(nutrients.fat)g per 100g, estimate the fat breakdown.
 Return ONLY a JSON object:
 {"saturated_fat": <grams>, "monounsaturated_fat": <grams>, "polyunsaturated_fat": <grams>, "cholesterol": <mg>}
+Rules:
+- CRITICAL: saturated_fat + monounsaturated_fat + polyunsaturated_fat MUST be <= \(nutrients.fat)g (total fat)
+- Each value must be >= 0 and individually less than total fat (\(nutrients.fat)g)
+- cholesterol is in mg (milligrams), typical range 0-300mg per 100g
+- Use established nutritional data for this food
 """
             do {
                 let messages = [OpenRouterMessage(role: "user", content: .text(aiPrompt))]
@@ -520,6 +527,20 @@ Return ONLY a JSON object:
                 if current.cholesterol == 0 { current.cholesterol = (map["cholesterol"] as? NSNumber)?.doubleValue ?? 0 }
             } catch {}
         }
+
+        // Validate: fat breakdown must not exceed total fat
+        let totalFat = current.fat
+        let fatSum = current.saturatedFat + current.monounsaturatedFat + current.polyunsaturatedFat
+        if fatSum > totalFat && totalFat > 0 {
+            let scale = totalFat / fatSum
+            current.saturatedFat *= scale
+            current.monounsaturatedFat *= scale
+            current.polyunsaturatedFat *= scale
+        }
+        // Each component individually must not exceed total fat
+        current.saturatedFat = min(current.saturatedFat, totalFat)
+        current.monounsaturatedFat = min(current.monounsaturatedFat, totalFat)
+        current.polyunsaturatedFat = min(current.polyunsaturatedFat, totalFat)
 
         // Sentinel
         if current.monounsaturatedFat == 0 && current.polyunsaturatedFat == 0 {
