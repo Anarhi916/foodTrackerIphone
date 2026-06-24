@@ -11,6 +11,13 @@
 	<key>uploadSymbols</key>
 	<true/>
 	<key>destination</key>
-	<string>upload</string>
+	<string>export</string>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.nutrition.tracker</key>
+		<string>nutritionTracker</string>
+	</dict>
 </dict>
 </plist>

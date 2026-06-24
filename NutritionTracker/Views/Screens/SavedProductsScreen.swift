@@ -4,7 +4,9 @@ struct SavedProductsScreen: View {
     @ObservedObject var viewModel: MainViewModel
     @State private var searchQuery = ""
     @State private var showDeleteAllAlert = false
-    @State private var showAddDialog = false
+    @State private var showAddTypeDialog = false
+    @State private var showAddManualDialog = false
+    @State private var showAddDishDialog = false
     @State private var editingEntry: FoodCache?
     @State private var quickAddEntry: FoodCache?
     @State private var quickAddWeight = "100"
@@ -72,7 +74,7 @@ struct SavedProductsScreen: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 12) {
-                    Button { showAddDialog = true } label: {
+                    Button { showAddTypeDialog = true } label: {
                         Image(systemName: "plus")
                     }
                     if !viewModel.cachedFoods.isEmpty {
@@ -120,8 +122,16 @@ struct SavedProductsScreen: View {
                 Text(entry.keyOriginal)
             }
         }
-        .sheet(isPresented: $showAddDialog) {
+        .confirmationDialog("Что добавить?", isPresented: $showAddTypeDialog, titleVisibility: .visible) {
+            Button("Продукт") { showAddManualDialog = true }
+            Button("Блюдо из ингредиентов") { showAddDishDialog = true }
+            Button("Отмена", role: .cancel) {}
+        }
+        .sheet(isPresented: $showAddManualDialog) {
             AddCachedFoodSheet(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showAddDishDialog) {
+            AddCustomDishSheet(viewModel: viewModel)
         }
         .sheet(item: $editingEntry) { entry in
             EditCachedFoodSheet(viewModel: viewModel, entry: entry)
@@ -319,5 +329,155 @@ struct EditCachedFoodSheet: View {
         }
         viewModel.updateCachedFoodFull(entry, nameRu: nameRu.trimmingCharacters(in: .whitespaces), nameEn: nameEn.trimmingCharacters(in: .whitespaces), nutrients: nutrients)
         dismiss()
+    }
+}
+
+// MARK: - Add Custom Dish (from ingredients)
+
+/// Локальная модель строки ингредиента в форме создания блюда.
+private struct IngredientInput: Identifiable {
+    let id = UUID()
+    var name: String = ""
+    var weight: String = ""
+}
+
+/// Форма создания пользовательского блюда из ингредиентов.
+/// Каждый ингредиент анализируется через `analyzeFoodText`, нутриенты суммируются,
+/// нормализуются к 100г и сохраняются в кеш как обычная запись.
+struct AddCustomDishSheet: View {
+    @ObservedObject var viewModel: MainViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var dishName = ""
+    @State private var ingredients: [IngredientInput] = [IngredientInput()]
+    @State private var isProcessing = false
+    @State private var errorMessage: String?
+
+    private var canSave: Bool {
+        guard !dishName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        let valid = ingredients.filter { ing in
+            !ing.name.trimmingCharacters(in: .whitespaces).isEmpty
+                && (Double(ing.weight.replacingOccurrences(of: ",", with: ".")) ?? 0) > 0
+        }
+        return !valid.isEmpty && !isProcessing
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Название блюда").font(.caption).foregroundColor(.secondary)
+                        TextField("Например, мой коктейль", text: $dishName, axis: .vertical)
+                            .lineLimit(1...3)
+                            .textFieldStyle(.roundedBorder)
+
+                        Text("Ингредиенты").font(.caption).foregroundColor(.secondary).padding(.top, 4)
+
+                        ForEach($ingredients) { $ing in
+                            ingredientRow($ing)
+                        }
+
+                        if let error = errorMessage {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                                .padding(.top, 8)
+                        }
+
+                        Text("Нутриенты будут рассчитаны автоматически по составу.")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 8)
+                    }
+                    .padding()
+                }
+                .disabled(isProcessing)
+
+                if isProcessing {
+                    Color.black.opacity(0.2).ignoresSafeArea()
+                    ProgressView("Анализ ингредиентов...")
+                        .padding()
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemBackground)))
+                        .shadow(radius: 4)
+                }
+            }
+            .navigationTitle("Новое блюдо")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Отмена") { dismiss() }
+                        .disabled(isProcessing)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Создать") { saveDish() }
+                        .disabled(!canSave)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func ingredientRow(_ ing: Binding<IngredientInput>) -> some View {
+        let isLast = ingredients.last?.id == ing.wrappedValue.id
+        HStack(spacing: 8) {
+            TextField("Ингредиент", text: ing.name)
+                .textFieldStyle(.roundedBorder)
+            TextField("г", text: ing.weight)
+                .textFieldStyle(.roundedBorder)
+                .keyboardType(.decimalPad)
+                .frame(width: 70)
+            if isLast {
+                Button { addIngredient() } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.green)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button { removeIngredient(ing.wrappedValue.id) } label: {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func addIngredient() {
+        ingredients.append(IngredientInput())
+    }
+
+    private func removeIngredient(_ id: UUID) {
+        ingredients.removeAll { $0.id == id }
+        if ingredients.isEmpty { ingredients.append(IngredientInput()) }
+    }
+
+    private func saveDish() {
+        let trimmedName = dishName.trimmingCharacters(in: .whitespaces)
+        let valid: [(name: String, weight: Double)] = ingredients.compactMap { ing in
+            let n = ing.name.trimmingCharacters(in: .whitespaces)
+            let w = Double(ing.weight.replacingOccurrences(of: ",", with: "."))
+            guard !n.isEmpty, let weight = w, weight > 0 else { return nil }
+            return (n, weight)
+        }
+        guard !trimmedName.isEmpty, !valid.isEmpty else { return }
+
+        isProcessing = true
+        errorMessage = nil
+        Task {
+            do {
+                try await viewModel.createCustomDish(name: trimmedName, ingredients: valid)
+                await MainActor.run {
+                    isProcessing = false
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    isProcessing = false
+                    errorMessage = error.localizedDescription
+                }
+            }
+        }
     }
 }

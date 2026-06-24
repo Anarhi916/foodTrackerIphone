@@ -135,13 +135,23 @@ struct MainScreen: View {
 
     private var foodInputSection: some View {
         VStack(spacing: 10) {
-            HStack {
+            HStack(spacing: 8) {
                 TextField("Что вы съели?", text: $viewModel.foodInput)
-                    .textFieldStyle(.roundedBorder)
+                    .font(.body)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color(.secondarySystemBackground))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(Color(.separator), lineWidth: 0.5)
+                    )
                     .onSubmit { viewModel.analyzeFood() }
                 Button(action: { viewModel.analyzeFood() }) {
                     Image(systemName: "arrow.right.circle.fill")
-                        .font(.title2)
+                        .font(.system(size: 34))
                         .foregroundColor(.green)
                 }
                 .disabled(viewModel.foodInput.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isLoading)
@@ -588,7 +598,8 @@ struct MainScreen: View {
         NavigationStack {
             VStack(spacing: 16) {
                 Text("Редактировать").font(.headline)
-                TextField("Название", text: $viewModel.photoFoodName)
+                TextField("Название", text: $viewModel.photoFoodName, axis: .vertical)
+                    .lineLimit(1...6)
                     .textFieldStyle(.roundedBorder)
                 HStack {
                     Text("Вес (г):")

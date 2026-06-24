@@ -219,8 +219,13 @@ Calculate daily norms and return ONLY a JSON object with this EXACT structure (a
             // Step 2: USDA lookup
             for i in aiPending.indices {
                 let item = aiPending[i]
+                // For dairy with explicit % fat (e.g. "творог 5%"), strip the percent
+                // from the English query — USDA doesn't index RU/UA fat grades, so we
+                // search for the base product and later correct macros via AI.
+                let isDairyWithPercent = isDairyWithFatPercent(item.foodNameRu)
+                let foodNameEnForSearch = isDairyWithPercent ? stripFatPercent(from: item.foodNameEn) : item.foodNameEn
                 do {
-                    let negationCleaned = item.foodNameEn
+                    let negationCleaned = foodNameEnForSearch
                         .replacingOccurrences(of: "\\b(without|no|not|minus|free\\s+from)\\s+\\w+", with: "", options: .regularExpression)
                         .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
                         .trimmingCharacters(in: .whitespaces)
@@ -229,8 +234,8 @@ Calculate daily norms and return ONLY a JSON object with this EXACT structure (a
                         .filter { $0.count >= 3 && !["with", "and", "the", "from", "for"].contains($0) }
                     if significantWords.count > 5 { continue }
 
-                    let usdaResult = try await network.searchUSDA(query: negationCleaned.isEmpty ? item.foodNameEn : negationCleaned)
-                    if let nutrients = selectBestUSDAResult(usdaResult, query: item.foodNameEn, negationCleaned: negationCleaned) {
+                    let usdaResult = try await network.searchUSDA(query: negationCleaned.isEmpty ? foodNameEnForSearch : negationCleaned)
+                    if let nutrients = selectBestUSDAResult(usdaResult, query: foodNameEnForSearch, negationCleaned: negationCleaned) {
                         aiPending[i].nutrientsPer100g = nutrients
                     }
                 } catch {
@@ -295,6 +300,12 @@ Calculate daily norms and return ONLY a JSON object with this EXACT structure (a
                         logger.warning("Last resort failed for '\(aiPending[i].foodNameRu)'")
                     }
                 }
+                // For dairy with explicit %, override macros via AI using GOST reference data
+                // (USDA gave us micronutrients for the base product, but macros for the wrong fat grade).
+                if let per100g = aiPending[i].nutrientsPer100g,
+                   isDairyWithFatPercent(aiPending[i].foodNameRu) {
+                    aiPending[i].nutrientsPer100g = await correctDairyMacrosWithAI(per100g, foodNameRu: aiPending[i].foodNameRu)
+                }
                 // Cache
                 if let per100g = aiPending[i].nutrientsPer100g {
                     db.saveToCache(keyOriginal: aiPending[i].foodNameRu, keyEn: aiPending[i].foodNameEn, nutrientsPer100g: per100g)
@@ -347,7 +358,10 @@ Return ONLY a JSON object with these fields:
         let json = extractJSON(from: text)
         let map = try parseJSONMap(json)
         let nameEn = (map["food_name_en"] as? String) ?? dishName
-        let per100g = nutrientDataFromMap(map)
+        var per100g = nutrientDataFromMap(map)
+        if isDairyWithFatPercent(dishName) {
+            per100g = await correctDairyMacrosWithAI(per100g, foodNameRu: dishName)
+        }
 
         db.saveToCache(keyOriginal: dishName, keyEn: nameEn, nutrientsPer100g: per100g)
 
@@ -679,6 +693,120 @@ Rules:
 
     // MARK: - Helpers
 
+    /// Список ключевых слов для молочных продуктов с гост-стандартом жирности
+    /// (где X% в названии = X граммов жира на 100г продукта).
+    /// Твёрдые сыры исключены — там % это жирность в сухом веществе.
+    private let dairyWithFatPercentKeywords: [String] = [
+        "творог", "творожн", "сирок", "сырок", "сир знежирен", "сир нежирн", "сир кисломолочн",
+        "молоко", "сметана", "кефир", "ряженка", "ряжанка", "йогурт", "сливки", "вершки",
+        "простокваша", "ацидофилин", "айран", "тан", "мацони", "снежок", "бифидок"
+    ]
+
+    /// true если в названии явно указан % жирности dairy-продукта по ГОСТ.
+    /// Твёрдые сыры исключаются.
+    private func isDairyWithFatPercent(_ foodName: String) -> Bool {
+        let lower = foodName.lowercased()
+        let isHardCheese = (lower.contains("сыр") || lower.contains("сир") ||
+                            (lower.contains("cheese") && !lower.contains("cottage")))
+                           && !dairyWithFatPercentKeywords.contains(where: { lower.contains($0) })
+        if isHardCheese { return false }
+        guard dairyWithFatPercentKeywords.contains(where: { lower.contains($0) }) else { return false }
+        return extractFatPercent(from: foodName) != nil
+    }
+
+    /// Извлекает указанный % жирности из названия продукта (0..100).
+    private func extractFatPercent(from foodName: String) -> Double? {
+        let pattern = #"(\d+(?:[.,]\d+)?)\s*%"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: foodName, range: NSRange(foodName.startIndex..., in: foodName)),
+              let range = Range(match.range(at: 1), in: foodName) else { return nil }
+        let raw = String(foodName[range]).replacingOccurrences(of: ",", with: ".")
+        guard let percent = Double(raw), percent >= 0, percent <= 100 else { return nil }
+        return percent
+    }
+
+    /// Убирает указание % жирности из названия — чтобы искать в USDA по общему имени продукта.
+    /// "cottage cheese 5%" → "cottage cheese", "молоко 2.5%" → "молоко".
+    private func stripFatPercent(from foodName: String) -> String {
+        let pattern = #"\s*\d+(?:[.,]\d+)?\s*%\s*"#
+        let stripped = foodName.replacingOccurrences(of: pattern, with: " ", options: .regularExpression)
+        return stripped.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Корректирует БЕЛОК/ЖИР/УГЛЕВОДЫ для dairy-продукта с указанным % жирности
+    /// через AI-запрос. USDA возвращает данные для другой разновидности
+    /// (например, для творога — cottage cheese 2%, у которого белок ~12г вместо ~17г),
+    /// поэтому макронутриенты переопределяем по ГОСТ через AI.
+    /// Микронутриенты (витамины, минералы) сохраняем из USDA.
+    private func correctDairyMacrosWithAI(_ nutrients: NutrientData, foodNameRu: String) async -> NutrientData {
+        guard let percent = extractFatPercent(from: foodNameRu) else { return nutrients }
+
+        let prompt = """
+You are a professional nutritionist. The user entered a dairy product following the Russian/Ukrainian GOST standard, where the percentage in the name is grams of fat per 100g of the final product (NOT % of milkfat in the source milk, NOT USDA cottage cheese variants).
+
+Product: "\(foodNameRu)"
+Fat percentage from name: \(percent)% (= \(percent) g of fat per 100g)
+
+Return ONLY a JSON object with macronutrients PER 100 GRAMS of this product, according to GOST/DSTU reference data:
+{"protein": <g>, "fat": <g>, "carbs": <g>, "calories": <kcal>}
+
+Examples for calibration (per 100g):
+- "творог 0%": {"protein": 18.0, "fat": 0.0, "carbs": 1.8, "calories": 71}
+- "творог 5%": {"protein": 17.2, "fat": 5.0, "carbs": 1.8, "calories": 121}
+- "творог 9%": {"protein": 16.7, "fat": 9.0, "carbs": 2.0, "calories": 156}
+- "молоко 2.5%": {"protein": 2.9, "fat": 2.5, "carbs": 4.7, "calories": 52}
+- "сметана 20%": {"protein": 2.5, "fat": 20.0, "carbs": 3.2, "calories": 206}
+- "кефир 1%": {"protein": 2.8, "fat": 1.0, "carbs": 4.0, "calories": 37}
+- "йогурт 3.2%": {"protein": 5.0, "fat": 3.2, "carbs": 8.5, "calories": 82}
+
+The fat value MUST equal \(percent). Calories MUST satisfy: protein*4 + fat*9 + carbs*4 ≈ calories.
+"""
+        do {
+            let messages = [OpenRouterMessage(role: "user", content: .text(prompt))]
+            let text = try await network.callOpenRouterWithRetry(messages: messages, models: APIConfig.textModels)
+            let json = extractJSON(from: text)
+            let map = try parseJSONMap(json)
+
+            guard let protein = (map["protein"] as? NSNumber)?.doubleValue,
+                  let fat = (map["fat"] as? NSNumber)?.doubleValue,
+                  let carbs = (map["carbs"] as? NSNumber)?.doubleValue,
+                  protein > 0 else {
+                logger.warning("AI macro correction returned invalid data for '\(foodNameRu)'")
+                return nutrients
+            }
+            let calories = (map["calories"] as? NSNumber)?.doubleValue ?? (protein * 4 + fat * 9 + carbs * 4)
+
+            // Safety net: fat MUST match the percent from the name (AI sometimes drifts).
+            let finalFat = abs(fat - percent) / max(percent, 0.5) > 0.15 ? percent : fat
+            let finalCalories = abs(finalFat - fat) > 0.01
+                ? (protein * 4 + finalFat * 9 + carbs * 4)
+                : calories
+
+            var corrected = nutrients
+            let oldFat = nutrients.fat
+            corrected.protein = protein
+            corrected.fat = finalFat
+            corrected.carbs = carbs
+            corrected.calories = finalCalories
+
+            // Масштабируем фракции жира пропорционально новому total fat.
+            if oldFat > 0 {
+                let scale = finalFat / oldFat
+                corrected.saturatedFat = nutrients.saturatedFat * scale
+                corrected.monounsaturatedFat = nutrients.monounsaturatedFat * scale
+                corrected.polyunsaturatedFat = nutrients.polyunsaturatedFat * scale
+                corrected.cholesterol = nutrients.cholesterol * scale
+            }
+
+            logger.debug("AI macro correction for '\(foodNameRu)': protein \(nutrients.protein)→\(protein)g, fat \(oldFat)→\(finalFat)g, carbs \(nutrients.carbs)→\(carbs)g")
+            return corrected
+        } catch {
+            logger.warning("AI macro correction failed for '\(foodNameRu)': \(error.localizedDescription)")
+            return nutrients
+        }
+    }
+
     private func parseLocalFoodInput(_ input: String) -> [(String, Double)] {
         let items = input.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         return items.map { item in
@@ -864,6 +992,31 @@ Rules:
 - "капучіно" / "капучино" → "coffee cappuccino"
 
 ВАЖНО: слова "вареная"/"варена"/"варенная"/"варёная"/"отварная" ВСЕ означают "cooked" — всегда добавляй "cooked" в перевод!
+
+ВАЖНО для свежих овощей/фруктов/ягод/зелени:
+Если продукт — свежий овощ, фрукт, ягода, зелень или листовой салат,
+и в названии НЕ указан способ приготовления (вареный/жареный/тушёный/печёный/квашеный/маринованный/сушёный и т.п.),
+обязательно добавь "raw" в food_name_en. USDA по умолчанию выдаёт салаты и обработанные варианты вместо свежего продукта.
+
+Примеры:
+- "капуста" → "cabbage raw"
+- "морковь" / "морква" → "carrot raw"
+- "яблоко" / "яблуко" → "apple raw"
+- "помидор" / "помідор" → "tomato raw"
+- "огурец" / "огірок" → "cucumber raw"
+- "лук" / "цибуля" → "onion raw"
+- "шпинат" → "spinach raw"
+- "клубника" / "полуниця" → "strawberry raw"
+- "банан" → "banana raw"
+- "брокколи" → "broccoli raw"
+- "перец болгарский" / "перець солодкий" → "bell pepper raw"
+
+НЕ добавляй "raw" для:
+- мяса/рыбы/птицы/яиц (без указания способа — подразумевается приготовленное)
+- круп, макарон, бобовых, хлеба
+- молочных продуктов, сыров, орехов, семян, масел
+- готовых блюд, консервов, продуктов прошедших обработку
+- если в названии уже есть способ приготовления или "сырой"/"свіжий"/"raw"/"fresh"
 
 ВАЖНО для составных блюд (салаты, супы):
 - НЕ перечисляй все ингредиенты в food_name_en — используй КОРОТКОЕ узнаваемое название

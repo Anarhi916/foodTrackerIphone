@@ -96,6 +96,7 @@ class MainViewModel: ObservableObject {
                     pendingFood = result
                     pendingFoodWeight = result.weightGrams > 0 ? result.weightGrams : extractWeight(from: input)
                     pendingFoodSource = "manual"
+                    cachedFoods = repo.getAllCachedFoods()
                     showConfirmDialog = true
                 } else {
                     for result in results {
@@ -353,6 +354,47 @@ class MainViewModel: ObservableObject {
 
     func addManualCachedFood(nameRu: String, nameEn: String, nutrients: NutrientData) {
         repo.addManualCachedFood(nameRu: nameRu, nameEn: nameEn, nutrients: nutrients)
+        cachedFoods = repo.getAllCachedFoods()
+    }
+
+    /// Создаёт кастомное блюдо из списка ингредиентов. Для каждого ингредиента вызываем
+    /// тот же AI/USDA-pipeline что и при основном вводе, суммируем нутриенты, нормализуем
+    /// к 100г блюда и сохраняем как обычную запись в кеш (имя на русском и английском
+    /// одинаковое — это пользовательское имя, оно не переводится).
+    func createCustomDish(name: String, ingredients: [(name: String, weight: Double)]) async throws {
+        var total = NutrientData()
+        var totalWeight: Double = 0
+        for ing in ingredients {
+            let trimmed = ing.name.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty, ing.weight > 0 else { continue }
+            let weightStr = ing.weight.truncatingRemainder(dividingBy: 1) == 0
+                ? "\(Int(ing.weight))г"
+                : "\(ing.weight)г"
+            let query = "\(trimmed) \(weightStr)"
+            let results: [FoodAnalysisResult]
+            do {
+                results = try await repo.analyzeFoodText(query)
+            } catch {
+                throw NSError(domain: "CustomDish", code: 1, userInfo: [
+                    NSLocalizedDescriptionKey: "Не удалось распознать «\(trimmed)»: \(error.localizedDescription)"
+                ])
+            }
+            guard !results.isEmpty else {
+                throw NSError(domain: "CustomDish", code: 1, userInfo: [
+                    NSLocalizedDescriptionKey: "Не удалось распознать «\(trimmed)»"
+                ])
+            }
+            for r in results { total = total + r.nutrients }
+            totalWeight += ing.weight
+        }
+        guard totalWeight > 0 else {
+            throw NSError(domain: "CustomDish", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "Сумма весов ингредиентов должна быть больше 0"
+            ])
+        }
+        let per100g = total * (100.0 / totalWeight)
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+        repo.addManualCachedFood(nameRu: trimmedName, nameEn: trimmedName, nutrients: per100g)
         cachedFoods = repo.getAllCachedFoods()
     }
 
