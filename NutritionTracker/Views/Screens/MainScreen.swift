@@ -10,6 +10,7 @@ struct MainScreen: View {
     @State private var macroTopFoods: IdentifiableNutrient?
     @State private var quickAddEntry: FoodCache?
     @State private var quickAddWeight: String = "100"
+    @FocusState private var foodInputFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -123,7 +124,7 @@ struct MainScreen: View {
 
     private var suggestions: [FoodCache] {
         let input = viewModel.foodInput.lowercased()
-        guard input.count >= 2 else { return [] }
+        guard input.count >= 2, foodInputFocused else { return [] }
         let translit = transliterateToLatin(input)
         return viewModel.cachedFoods.filter { cache in
             cache.keyOriginal.lowercased().contains(input)
@@ -148,6 +149,7 @@ struct MainScreen: View {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .stroke(Color(.separator), lineWidth: 0.5)
                     )
+                    .focused($foodInputFocused)
                     .onSubmit { viewModel.analyzeFood() }
                 Button(action: { viewModel.analyzeFood() }) {
                     Image(systemName: "arrow.right.circle.fill")

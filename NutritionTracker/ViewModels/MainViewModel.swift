@@ -34,6 +34,9 @@ class MainViewModel: ObservableObject {
     @Published var barcodeNutrientsPer100g: NutrientData?
     @Published var barcodeWeight: String = "100"
 
+    // Set when a NutriTrack QR share is scanned (URL points at our web share page or custom scheme)
+    @Published var importedSharedFood: SharedFood?
+
     @Published var showPhotoEditDialog: Bool = false
     @Published var photoFoodName: String = ""
     @Published var photoOriginalFoodName: String = ""
@@ -172,6 +175,12 @@ class MainViewModel: ObservableObject {
     // MARK: - Barcode
 
     func onBarcodeScanned(_ barcode: String) {
+        // If the scanned code is actually a NutriTrack share QR, parse and import.
+        // This lets the same "Scan" flow work for both product barcodes and shared foods.
+        if let url = URL(string: barcode), let shared = FoodShare.parseShareLink(url) {
+            importedSharedFood = shared
+            return
+        }
         isLoading = true
         errorMessage = nil
         Task {
@@ -197,11 +206,16 @@ class MainViewModel: ObservableObject {
               let per100g = barcodeNutrientsPer100g,
               let weight = Double(barcodeWeight) else { return }
         let nutrients = per100g * (weight / 100.0)
-        repo.addFoodEntry(foodName: name, weightGrams: weight, nutrients: nutrients, source: "barcode", fromCache: true)
+        pendingFood = FoodAnalysisResult(
+            foodName: name, foodNameEn: name,
+            weightGrams: weight, nutrients: nutrients, fromCache: true
+        )
+        pendingFoodWeight = weight
+        pendingFoodSource = "barcode"
         showBarcodeWeightDialog = false
         barcodeProductName = nil
         barcodeNutrientsPer100g = nil
-        refreshTodayData()
+        showConfirmDialog = true
     }
 
     func dismissBarcodeDialog() {
@@ -287,23 +301,29 @@ class MainViewModel: ObservableObject {
         let nameChanged = foodDesc != photoOriginalFoodName.trimmingCharacters(in: .whitespaces)
 
         if let per100g = photoNutrientsPer100g, !nameChanged {
-            let factor = weightGrams / 100.0
-            let result = FoodAnalysisResult(
-                foodName: foodDesc, foodNameEn: photoFoodNameEn,
-                weightGrams: weightGrams, nutrients: per100g * factor, fromCache: false
-            )
             showPhotoEditDialog = false
-            pendingFood = result
-            pendingFoodWeight = weightGrams
-            pendingFoodSource = "photo"
-            showConfirmDialog = true
+            isLoading = true
+            let nameEn = photoFoodNameEn
             photoNutrientsPer100g = nil
+            Task {
+                let enriched = await repo.enrichMicrosWithAIPublic(per100g, foodNameEn: nameEn)
+                let factor = weightGrams / 100.0
+                let result = FoodAnalysisResult(
+                    foodName: foodDesc, foodNameEn: nameEn,
+                    weightGrams: weightGrams, nutrients: enriched * factor, fromCache: false
+                )
+                isLoading = false
+                pendingFood = result
+                pendingFoodWeight = weightGrams
+                pendingFoodSource = "photo"
+                showConfirmDialog = true
+            }
         } else {
             showPhotoEditDialog = false
             isLoading = true
             Task {
                 do {
-                    let result = try await repo.analyzeSingleDish(foodDesc, weightGrams: weightGrams)
+                    let result = try await repo.analyzeSingleDish(foodDesc, weightGrams: weightGrams, useCache: false)
                     pendingFood = result
                     pendingFoodWeight = result.weightGrams
                     pendingFoodSource = "photo"
@@ -361,30 +381,35 @@ class MainViewModel: ObservableObject {
     /// тот же AI/USDA-pipeline что и при основном вводе, суммируем нутриенты, нормализуем
     /// к 100г блюда и сохраняем как обычную запись в кеш (имя на русском и английском
     /// одинаковое — это пользовательское имя, оно не переводится).
-    func createCustomDish(name: String, ingredients: [(name: String, weight: Double)]) async throws {
+    func createCustomDish(name: String, ingredients: [(name: String, weight: Double, cached: FoodCache?)]) async throws {
         var total = NutrientData()
         var totalWeight: Double = 0
         for ing in ingredients {
             let trimmed = ing.name.trimmingCharacters(in: .whitespaces)
             guard !trimmed.isEmpty, ing.weight > 0 else { continue }
-            let weightStr = ing.weight.truncatingRemainder(dividingBy: 1) == 0
-                ? "\(Int(ing.weight))г"
-                : "\(ing.weight)г"
-            let query = "\(trimmed) \(weightStr)"
-            let results: [FoodAnalysisResult]
-            do {
-                results = try await repo.analyzeFoodText(query)
-            } catch {
-                throw NSError(domain: "CustomDish", code: 1, userInfo: [
-                    NSLocalizedDescriptionKey: "Не удалось распознать «\(trimmed)»: \(error.localizedDescription)"
-                ])
+            if let cached = ing.cached {
+                let per100g = repo.parseNutrients(cached.nutrientsPer100gJson)
+                total = total + per100g * (ing.weight / 100.0)
+            } else {
+                let weightStr = ing.weight.truncatingRemainder(dividingBy: 1) == 0
+                    ? "\(Int(ing.weight))г"
+                    : "\(ing.weight)г"
+                let query = "\(trimmed) \(weightStr)"
+                let results: [FoodAnalysisResult]
+                do {
+                    results = try await repo.analyzeFoodText(query)
+                } catch {
+                    throw NSError(domain: "CustomDish", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "Не удалось распознать «\(trimmed)»: \(error.localizedDescription)"
+                    ])
+                }
+                guard !results.isEmpty else {
+                    throw NSError(domain: "CustomDish", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "Не удалось распознать «\(trimmed)»"
+                    ])
+                }
+                for r in results { total = total + r.nutrients }
             }
-            guard !results.isEmpty else {
-                throw NSError(domain: "CustomDish", code: 1, userInfo: [
-                    NSLocalizedDescriptionKey: "Не удалось распознать «\(trimmed)»"
-                ])
-            }
-            for r in results { total = total + r.nutrients }
             totalWeight += ing.weight
         }
         guard totalWeight > 0 else {

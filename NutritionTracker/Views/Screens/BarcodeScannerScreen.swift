@@ -12,6 +12,7 @@ struct BarcodeScannerScreen: View {
     @Environment(\.dismiss) private var dismiss
     @State private var scannedBarcode: String?
     @State private var cameraPermissionDenied = false
+    @State private var readyToScan = false
 
     var body: some View {
         ZStack {
@@ -32,8 +33,9 @@ struct BarcodeScannerScreen: View {
                     }
                 }
             } else {
-                BarcodeScannerView { barcode in
+                BarcodeScannerView(isEnabled: readyToScan) { barcode in
                     guard scannedBarcode == nil else { return }
+                    readyToScan = false
                     scannedBarcode = barcode
                     switch mode {
                     case .food:
@@ -47,13 +49,21 @@ struct BarcodeScannerScreen: View {
 
                 VStack {
                     Spacer()
-                    Text(mode == .food ? "Наведите на штрих-код продукта" : "Наведите на штрих-код БАД")
+                    Button(action: { readyToScan = true }) {
+                        Label(
+                            readyToScan ? "Наведите на штрих-код…" : "Сканировать",
+                            systemImage: readyToScan ? "barcode.viewfinder" : "barcode.viewfinder"
+                        )
                         .font(.headline)
                         .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(10)
-                        .padding(.bottom, 50)
+                        .background(readyToScan ? Color.green : Color.blue)
+                        .cornerRadius(14)
+                        .padding(.horizontal, 32)
+                    }
+                    .disabled(readyToScan)
+                    .padding(.bottom, 50)
                 }
             }
         }
@@ -76,19 +86,25 @@ struct BarcodeScannerScreen: View {
 }
 
 struct BarcodeScannerView: UIViewControllerRepresentable {
+    var isEnabled: Bool
     let onBarcodeFound: (String) -> Void
 
     func makeUIViewController(context: Context) -> BarcodeScannerViewController {
         let vc = BarcodeScannerViewController()
         vc.onBarcodeFound = onBarcodeFound
+        vc.isEnabled = isEnabled
         return vc
     }
 
-    func updateUIViewController(_ uiViewController: BarcodeScannerViewController, context: Context) {}
+    func updateUIViewController(_ uiViewController: BarcodeScannerViewController, context: Context) {
+        uiViewController.isEnabled = isEnabled
+    }
 }
 
 class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
     var onBarcodeFound: ((String) -> Void)?
+    var isEnabled: Bool = false
+
     private var captureSession: AVCaptureSession?
     private var previewLayer: AVCaptureVideoPreviewLayer?
 
@@ -113,7 +129,7 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
         if session.canAddOutput(output) {
             session.addOutput(output)
             output.setMetadataObjectsDelegate(self, queue: .main)
-            output.metadataObjectTypes = [.ean8, .ean13, .upce, .code128, .code39, .code93, .itf14]
+            output.metadataObjectTypes = [.ean8, .ean13, .upce, .code128, .code39, .code93, .itf14, .qr]
         }
 
         let layer = AVCaptureVideoPreviewLayer(session: session)
@@ -129,8 +145,10 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     }
 
     func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
-        guard let object = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
+        guard isEnabled,
+              let object = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
               let barcode = object.stringValue else { return }
+        isEnabled = false
         captureSession?.stopRunning()
         onBarcodeFound?(barcode)
     }

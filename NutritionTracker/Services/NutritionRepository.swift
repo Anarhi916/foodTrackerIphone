@@ -216,30 +216,121 @@ Calculate daily norms and return ONLY a JSON object with this EXACT structure (a
                 }
             }
 
-            // Step 2: USDA lookup
+            // Step 2: USDA lookup — AI picks the best candidate (with adversarial verification + alt queries)
             for i in aiPending.indices {
                 let item = aiPending[i]
                 // For dairy with explicit % fat (e.g. "творог 5%"), strip the percent
                 // from the English query — USDA doesn't index RU/UA fat grades, so we
                 // search for the base product and later correct macros via AI.
                 let isDairyWithPercent = isDairyWithFatPercent(item.foodNameRu)
-                let foodNameEnForSearch = isDairyWithPercent ? stripFatPercent(from: item.foodNameEn) : item.foodNameEn
-                do {
-                    let negationCleaned = foodNameEnForSearch
-                        .replacingOccurrences(of: "\\b(without|no|not|minus|free\\s+from)\\s+\\w+", with: "", options: .regularExpression)
-                        .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-                        .trimmingCharacters(in: .whitespaces)
-
-                    let significantWords = negationCleaned.lowercased().components(separatedBy: .whitespaces)
-                        .filter { $0.count >= 3 && !["with", "and", "the", "from", "for"].contains($0) }
-                    if significantWords.count > 5 { continue }
-
-                    let usdaResult = try await network.searchUSDA(query: negationCleaned.isEmpty ? foodNameEnForSearch : negationCleaned)
-                    if let nutrients = selectBestUSDAResult(usdaResult, query: foodNameEnForSearch, negationCleaned: negationCleaned) {
-                        aiPending[i].nutrientsPer100g = nutrients
+                let foodNameEnForSearch: String = {
+                    var name = isDairyWithPercent ? stripFatPercent(from: item.foodNameEn) : item.foodNameEn
+                    // Normalise British English → American English so USDA finds the right entry
+                    let britishToAmerican: [(String, String)] = [
+                        ("beetroot", "beet"), ("aubergine", "eggplant"), ("courgette", "zucchini"),
+                        ("coriander leaf", "cilantro"), ("capsicum", "bell pepper"),
+                        ("rocket", "arugula"), ("mangetout", "snow peas"), ("swede", "rutabaga"),
+                        ("broad bean", "fava bean"), ("chickpea", "garbanzo bean"),
+                        ("maize", "corn"), ("prawn", "shrimp"),
+                    ]
+                    for (british, american) in britishToAmerican {
+                        name = name.replacingOccurrences(of: british, with: american, options: .caseInsensitive)
                     }
-                } catch {
-                    logger.warning("USDA search failed for '\(item.foodNameEn)': \(error.localizedDescription)")
+                    return name
+                }()
+
+                let negationCleaned = foodNameEnForSearch
+                    .replacingOccurrences(of: "\\b(without|no|not|minus|free\\s+from)\\s+\\w+", with: "", options: .regularExpression)
+                    .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+                    .trimmingCharacters(in: .whitespaces)
+
+                // Skip USDA for multi-ingredient composite dishes (AI handles them better).
+                let significantWords = negationCleaned.lowercased().components(separatedBy: .whitespaces)
+                    .filter { $0.count >= 3 && !["with", "and", "the", "from", "for"].contains($0) }
+                if significantWords.count > 5 {
+                    logger.debug("Skipping USDA for composite dish (\(significantWords.count) words): '\(negationCleaned)'")
+                    continue
+                }
+
+                // The query shown to the AI must match what USDA was actually searched for —
+                // otherwise for dairy-with-% ("творог 5%" → foodNameEnForSearch="curd") the AI
+                // sees "curd 5%" and rejects the base-product hits as fat-mismatched.
+                let queryRuForAi = isDairyWithPercent ? stripFatPercent(from: item.foodNameRu) : item.foodNameRu
+                let queryEnForAi = isDairyWithPercent ? stripFatPercent(from: item.foodNameEn) : item.foodNameEn
+
+                // Generate USDA-optimized search queries upfront.
+                // Core fix: instead of using food_name_en directly (which can be a natural-language
+                // dish name like "beef stew"), we ask a specialised function to produce USDA-style
+                // ingredient+preparation queries ("beef braised").
+                // For dairy-with-%, skip generation and use the stripped base name directly.
+                let searchQueries: [String]
+                if isDairyWithPercent {
+                    searchQueries = [negationCleaned.isEmpty ? foodNameEnForSearch : negationCleaned]
+                } else {
+                    let generated = await generateUsdaSearchQueries(queryRu: queryRuForAi, queryEn: queryEnForAi)
+                    searchQueries = generated.isEmpty ? [negationCleaned.isEmpty ? foodNameEnForSearch : negationCleaned] : generated
+                }
+                logger.debug("USDA search queries for '\(item.foodNameEn)': \(searchQueries)")
+
+                var allCandidates: [Int: UsdaFood] = [:]
+
+                // Runs one USDA search round: fetches, dedups, then asks AI to pick from the FULL
+                // cumulative candidate set (not just this round's delta) — so a later query
+                // doesn't hide a good earlier hit from the AI. After the pick, a second AI call
+                // adversarially verifies the pick is the same biological product.
+                func runOneRound(_ query: String) async -> UsdaFood? {
+                    do {
+                        let res = try await network.searchUSDA(query: query)
+                        let fresh: [UsdaFood] = (res.foods ?? []).compactMap { f in
+                            guard let id = f.fdcId else { return nil }
+                            if allCandidates[id] != nil { return nil }
+                            return f
+                        }
+                        for f in fresh { if let id = f.fdcId { allCandidates[id] = f } }
+                        let briefsById: [Int: UsdaCandidateBrief] = Dictionary(uniqueKeysWithValues:
+                            allCandidates.values.compactMap { food -> (Int, UsdaCandidateBrief)? in
+                                guard let brief = usdaCandidateBrief(food) else { return nil }
+                                return (brief.fdcId, brief)
+                            })
+                        if briefsById.isEmpty {
+                            logger.debug("USDA query='\(query)' — no candidates with calories in cumulative set")
+                            return nil
+                        }
+                        logger.debug("USDA query='\(query)': +\(fresh.count) new, \(briefsById.count) total fed to AI")
+
+                        var excluded = Set<Int>()
+                        for _ in 0..<2 {
+                            let remaining = briefsById.values.filter { !excluded.contains($0.fdcId) }
+                            if remaining.isEmpty { break }
+                            guard let pickedId = await askAiToPickUsdaCandidate(queryRu: queryRuForAi, queryEn: queryEnForAi, candidates: Array(remaining)) else { break }
+                            guard let pickedBrief = briefsById[pickedId] else { break }
+                            if await verifyUsdaPick(queryRu: queryRuForAi, queryEn: queryEnForAi, pick: pickedBrief) {
+                                return allCandidates[pickedId]
+                            }
+                            logger.debug("verifyUsdaPick REJECTED '\(pickedBrief.description)' for '\(queryEnForAi)' — retrying selection")
+                            excluded.insert(pickedId)
+                        }
+                        return nil
+                    } catch {
+                        logger.warning("USDA search failed for '\(query)': \(error.localizedDescription)")
+                        return nil
+                    }
+                }
+
+                // Try each generated query in order until AI selects and verifies a candidate.
+                var selectedFood: UsdaFood? = nil
+                for query in searchQueries {
+                    selectedFood = await runOneRound(query)
+                    if selectedFood != nil { break }
+                }
+
+                if selectedFood == nil {
+                    logger.debug("AI rejected all USDA candidates for '\(item.foodNameEn)' — falling through to Step 3")
+                }
+
+                if let food = selectedFood,
+                   let nutrients = buildNutrientsFromUsda(food, query: foodNameEnForSearch, negationCleaned: negationCleaned) {
+                    aiPending[i].nutrientsPer100g = nutrients
                 }
             }
 
@@ -315,11 +406,12 @@ Calculate daily norms and return ONLY a JSON object with this EXACT structure (a
 
         // Build results
         let allItems = cachedResults + aiPending
+        let zeroMacroOk = ["вода", "water", "чай", "tea", "кофе", "coffee", "herb", "spice", "vinegar", "gelatin"]
         let results: [FoodAnalysisResult] = allItems.compactMap { item in
-            guard let per100g = item.nutrientsPer100g,
-                  per100g.calories > 0 || per100g.protein > 0 || per100g.fat > 0 || per100g.carbs > 0 else {
-                return nil
-            }
+            guard let per100g = item.nutrientsPer100g else { return nil }
+            let hasNutrients = per100g.calories > 0 || per100g.protein > 0 || per100g.fat > 0 || per100g.carbs > 0
+            let isKnownZero = zeroMacroOk.contains(where: { item.foodNameRu.lowercased().contains($0) || item.foodNameEn.lowercased().contains($0) })
+            guard hasNutrients || isKnownZero else { return nil }
             let factor = item.weight / 100.0
             return FoodAnalysisResult(
                 foodName: item.foodNameRu,
@@ -414,7 +506,9 @@ Return ONLY a JSON object:
         // OFF API
         let response = try await network.lookupBarcode(barcode)
         guard let product = response.product else { return nil }
-        let name = product.productName ?? product.productNameEn ?? product.brands ?? "Неизвестный продукт"
+        let name = [product.productNameRu, product.productNameUk, product.productNameEn, product.productName, product.brands]
+            .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
+            .first(where: { !$0.isEmpty }) ?? "Неизвестный продукт"
         let n = product.nutriments
 
         var per100g = NutrientData(
@@ -444,6 +538,9 @@ Return ONLY a JSON object:
             per100g = aiResult.nutrients
         }
 
+        // Enrich missing micros via AI (OFF API rarely provides vitamins/minerals)
+        per100g = await enrichMicrosWithAIPublic(per100g, foodNameEn: name)
+
         // Enrich fat details
         per100g = try await enrichFatDetailsIfNeeded(per100g, foodNameEn: name, cacheEntry: nil)
 
@@ -452,6 +549,50 @@ Return ONLY a JSON object:
         db.saveToCache(keyOriginal: "barcode:\(barcode)", keyEn: name, nutrientsPer100g: per100g)
 
         return (name, per100g, false)
+    }
+
+    func enrichMicrosWithAIPublic(_ nutrients: NutrientData, foodNameEn: String) async -> NutrientData {
+        var missing: [String] = []
+        if nutrients.vitaminA == 0 { missing.append("vitamin_a (mcg RAE)") }
+        if nutrients.vitaminB1 == 0 { missing.append("vitamin_b1 (mg)") }
+        if nutrients.vitaminB2 == 0 { missing.append("vitamin_b2 (mg)") }
+        if nutrients.vitaminB3 == 0 { missing.append("vitamin_b3 (mg)") }
+        if nutrients.vitaminB5 == 0 { missing.append("vitamin_b5 (mg)") }
+        if nutrients.vitaminB6 == 0 { missing.append("vitamin_b6 (mg)") }
+        if nutrients.vitaminB7 == 0 { missing.append("vitamin_b7 (mcg)") }
+        if nutrients.vitaminB9 == 0 { missing.append("vitamin_b9 (mcg)") }
+        if nutrients.vitaminB12 == 0 { missing.append("vitamin_b12 (mcg)") }
+        if nutrients.vitaminC == 0 { missing.append("vitamin_c (mg)") }
+        if nutrients.vitaminD == 0 { missing.append("vitamin_d (mcg)") }
+        if nutrients.vitaminE == 0 { missing.append("vitamin_e (mg)") }
+        if nutrients.vitaminK == 0 { missing.append("vitamin_k (mcg)") }
+        if nutrients.calcium == 0 { missing.append("calcium (mg)") }
+        if nutrients.iron == 0 { missing.append("iron (mg)") }
+        if nutrients.magnesium == 0 { missing.append("magnesium (mg)") }
+        if nutrients.phosphorus == 0 { missing.append("phosphorus (mg)") }
+        if nutrients.potassium == 0 { missing.append("potassium (mg)") }
+        if nutrients.sodium == 0 { missing.append("sodium (mg)") }
+        if nutrients.zinc == 0 { missing.append("zinc (mg)") }
+        if nutrients.copper == 0 { missing.append("copper (mg)") }
+        if nutrients.manganese == 0 { missing.append("manganese (mg)") }
+        if nutrients.selenium == 0 { missing.append("selenium (mcg)") }
+        if nutrients.iodine < 0.01 { missing.append("iodine (mcg)") }
+        guard !missing.isEmpty else { return nutrients }
+
+        let prompt = """
+For "\(foodNameEn)" per 100g, provide ONLY these nutrients using USDA reference values.
+\(missing.joined(separator: ", "))
+Return ONLY JSON, e.g.: {"vitamin_a": 45, "calcium": 11}
+"""
+        do {
+            let messages = [OpenRouterMessage(role: "user", content: .text(prompt))]
+            let text = try await network.callOpenRouterWithRetry(messages: messages, models: APIConfig.textModels)
+            let map = try parseJSONMap(extractJSON(from: text))
+            return fillMissingMicros(nutrients, from: map)
+        } catch {
+            logger.warning("AI micro enrichment failed for '\(foodNameEn)': \(error.localizedDescription)")
+            return nutrients
+        }
     }
 
     // MARK: - Supplement
@@ -467,7 +608,9 @@ Return ONLY a JSON object:
 
         let response = try await network.lookupBarcode(barcode)
         guard let product = response.product else { return nil }
-        let name = product.productName ?? product.productNameEn ?? product.brands ?? "Dietary supplement"
+        let name = [product.productNameRu, product.productNameUk, product.productNameEn, product.productName, product.brands]
+            .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
+            .first(where: { !$0.isEmpty }) ?? "Dietary supplement"
         let servingSize = product.servingSize ?? "1 порция"
 
         let perServing = try await getSupplementNutrientsFromAI(name: name, servingSize: servingSize, barcode: barcode)
@@ -570,85 +713,285 @@ Rules:
         return current
     }
 
-    // MARK: - USDA Selection
+    // MARK: - AI-driven USDA candidate selection
+    // Instead of a hand-tuned scoreFood() heuristic, we ask the AI to pick the
+    // best USDA hit for the query. The AI sees only a compact candidate list
+    // (fdcId + description + dataType + macros) and returns a single fdcId —
+    // nutrient values are still taken from the USDA JSON, so the model cannot
+    // "invent" data from its own sources.
 
-    private func selectBestUSDAResult(_ response: UsdaSearchResponse, query: String, negationCleaned: String) -> NutrientData? {
-        let queryWords = negationCleaned.lowercased().components(separatedBy: .whitespaces).filter { $0.count >= 3 }
-        let cookingTerms: Set<String> = ["porridge", "cooked", "boiled", "fried", "baked", "grilled", "steamed", "roasted", "stewed", "casserole", "braised", "raw", "fresh", "dried", "frozen", "canned", "smoked", "pickled", "mashed", "sliced", "chopped", "minced", "ground", "whole", "hot", "cold", "warm", "thick", "thin", "light", "heavy", "homemade", "instant", "regular", "plain", "with", "without"]
-        let mainWord = queryWords.filter { !cookingTerms.contains($0) }.max(by: { $0.count < $1.count }) ?? queryWords.max(by: { $0.count < $1.count })
+    /// Compact form of a USDA hit used to build the AI selection prompt.
+    struct UsdaCandidateBrief {
+        let fdcId: Int
+        let description: String
+        let dataType: String
+        let calories: Double
+        let protein: Double
+        let fat: Double
+        let carbs: Double
+    }
 
-        guard let mainWord else { return nil }
-
-        func wordForms(_ word: String) -> [String] {
-            var forms = [word, word + "s", word + "es"]
-            if word.hasSuffix("y") && word.count > 2 { forms.append(String(word.dropLast()) + "ies") }
-            if word.hasSuffix("ies") && word.count > 4 { forms.append(String(word.dropLast(3)) + "y") }
-            if word.hasSuffix("es") && word.count > 3 { forms.append(String(word.dropLast(2))) }
-            if word.hasSuffix("s") && !word.hasSuffix("ss") && word.count > 2 { forms.append(String(word.dropLast())) }
-            return forms
+    private func usdaCandidateBrief(_ f: UsdaFood) -> UsdaCandidateBrief? {
+        guard let id = f.fdcId else { return nil }
+        var nMap: [Int: Double] = [:]
+        for fn in f.foodNutrients ?? [] {
+            if let nid = fn.nutrientId, let v = fn.value { nMap[nid] = v }
         }
+        let cal = nMap[UsdaFoodNutrient.ENERGY] ?? 0
+        // Callers that expect zero-calorie foods (water, plain tea) filter differently;
+        // this brief is only used for AI ranking where calories > 0 is the norm.
+        guard cal > 0 else { return nil }
+        return UsdaCandidateBrief(
+            fdcId: id,
+            description: f.description ?? "",
+            dataType: f.dataType ?? "",
+            calories: cal,
+            protein: nMap[UsdaFoodNutrient.PROTEIN] ?? 0,
+            fat: nMap[UsdaFoodNutrient.FAT] ?? 0,
+            carbs: nMap[UsdaFoodNutrient.CARBS] ?? 0
+        )
+    }
 
-        func descContains(_ desc: String, _ word: String) -> Bool {
-            wordForms(word).contains(where: { desc.contains($0) })
+    /// Ask the AI to pick the best USDA candidate for a query.
+    /// Returns the chosen fdcId, or nil if no candidate is a good match.
+    /// The returned id is verified against the candidate list to guard against hallucinated IDs.
+    private func askAiToPickUsdaCandidate(
+        queryRu: String,
+        queryEn: String,
+        candidates: [UsdaCandidateBrief]
+    ) async -> Int? {
+        if candidates.isEmpty { return nil }
+        let list = candidates.enumerated().map { (i, c) in
+            "\(i + 1). [fdcId=\(c.fdcId)] [\(c.dataType)] \"\(c.description)\" — " +
+                "cal=\(String(format: "%.0f", c.calories)), " +
+                "P=\(String(format: "%.1f", c.protein)), " +
+                "F=\(String(format: "%.1f", c.fat)), " +
+                "C=\(String(format: "%.1f", c.carbs))"
+        }.joined(separator: "\n")
+
+        let prompt = """
+You are a nutrition expert selecting the single best USDA Food Data Central entry that matches a user's food query.
+
+User query (original language): "\(queryRu)"
+User query (English): "\(queryEn)"
+
+USDA candidates (values are per 100g):
+\(list)
+
+Selection rules — in order of importance:
+
+1. **BIOLOGICAL IDENTITY is non-negotiable.** The candidate MUST be the SAME species / product as the query — not a lexically similar but biologically different food. If none of the candidates is the same product, return fdc_id = null.
+   Common traps to REJECT:
+   - "черемша" / "wild garlic" / "ramps" / "wild leek" (Allium ursinum / Allium tricoccum) is NOT the same as "garlic" (Allium sativum) — garlic bulbs have ~33g carbs, wild garlic leaves have ~3-6g. Never accept "Garlic, raw" for a "wild garlic" / "ramps" / "черемша" query.
+   - "cashew" is NOT "chestnut"; "chestnut" is NOT "water chestnut".
+   - "cilantro" / "coriander leaf" is NOT "coriander seed"; "parsley" is NOT "cilantro".
+   - "sweet potato" / "yam" is NOT "potato".
+   - "sour cherry" / "вишня" is NOT "sweet cherry" / "черешня".
+   - "buckwheat" is NOT "wheat"; "millet" is NOT "corn".
+   - "quinoa" is NOT "couscous"; "spelt" is NOT "wheat".
+   - "kohlrabi" is NOT "cabbage"; "bok choy" is NOT "cabbage".
+   - "veal" is NOT "beef"; "mutton" is NOT "lamb".
+   - "salmon" is NOT "trout"; "cod" is NOT "haddock" (different species — check the description carefully).
+   - Frozen / canned / dried / juice / pie / jam / chips / cereal / candy / powder / ice cream forms are NOT the raw whole product.
+
+2. **Macronutrient sanity check.** For the query's food family (leafy green, root vegetable, fruit, meat, grain, dairy...), the candidate's macros must be plausible. A "leafy green vegetable" query with >20g carbs per 100g is almost certainly the wrong product (leaves rarely exceed 5-8g carbs). A "raw fruit" query with 0g fiber and >30g carbs is likely juice or dried fruit.
+
+3. **Preparation state must match:**
+   - For raw fruits / vegetables / berries with no cooking method mentioned — pick "raw" / whole product.
+   - For cooked / boiled / porridge — pick an entry with matching preparation state ("cooked", NOT "from raw" which means dry-weight equivalent).
+   - Frozen / canned / dried / juice / pie / jam / chips / cereal / candy / powder / ice cream are different products — do NOT accept unless the query explicitly asked for that form.
+
+4. **Data-type preference:** Prefer "Survey (FNDDS)", "SR Legacy", "Foundation" over "Branded" for generic ingredients.
+
+5. **Implausible Branded macros filter:** Reject Branded entries where protein > 40g (unless protein powder / whey / jerky / parmesan), carbs > 75g (unless sugar / jam / flour / cereal / dried), fat > 70g (unless oil / butter / ghee / lard / mayonnaise).
+
+6. **Atwater check:** Reject entries where 4·protein + 9·fat + 4·carbs > 1.3 × calories.
+
+7. **Poultry:** For chicken / turkey breast or thigh, prefer "skinless" / "meat only" unless the query mentions skin or coating.
+
+8. **Generic over variety:** Prefer generic entries over variety-specific ones when the query has no variety qualifier ("tomatoes, raw" over "tomatoes, green, raw").
+
+9. **No hallucination:** Only return an fdcId from the numbered list above. If nothing is a good match, return null — DO NOT force a pick.
+
+Return ONLY a JSON object:
+{"fdc_id": <chosen id, or null if none of the candidates match well>, "reason": "<one short sentence explaining the pick or why nothing fit>"}
+"""
+        do {
+            let messages = [OpenRouterMessage(role: "user", content: .text(prompt))]
+            let text = try await network.callOpenRouterWithRetry(messages: messages, models: APIConfig.textModels)
+            let json = extractJSON(from: text)
+            let map = try parseJSONMap(json)
+            let raw = map["fdc_id"]
+            let id: Int? = {
+                if let n = raw as? NSNumber { return n.intValue }
+                if let s = raw as? String { return Int(s) }
+                return nil
+            }()
+            logger.debug("AI USDA pick for '\(queryEn)': fdcId=\(id.map(String.init) ?? "nil"), reason=\((map["reason"] as? String) ?? "")")
+            // Guard against hallucination: the id must exist in the candidate list.
+            guard let picked = id, candidates.contains(where: { $0.fdcId == picked }) else { return nil }
+            return picked
+        } catch {
+            logger.warning("AI USDA pick failed for '\(queryEn)': \(error.localizedDescription)")
+            return nil
         }
+    }
 
-        func isRelevant(_ description: String?) -> Bool {
-            guard let desc = description?.lowercased() else { return false }
-            guard descContains(desc, mainWord) else { return false }
-            let secondaryWords = queryWords.filter { $0 != mainWord }
-            if queryWords.count >= 3 && !secondaryWords.isEmpty {
-                return secondaryWords.contains(where: { descContains(desc, $0) })
+    /// Adversarial post-verification: after askAiToPickUsdaCandidate picks a candidate,
+    /// ask the AI a fresh, sharply-focused question — "is this REALLY the same biological
+    /// product as the query?" — with an instruction to default to REJECT on any doubt.
+    /// Catches lexical-similarity traps that a permissive selection prompt might slip
+    /// through (e.g. AI picks "Garlic, raw" for a "черемша"/"wild garlic" query).
+    private func verifyUsdaPick(
+        queryRu: String,
+        queryEn: String,
+        pick: UsdaCandidateBrief
+    ) async -> Bool {
+        let prompt = """
+You are a nutrition-safety reviewer. Someone selected a USDA entry as the match for a user's food query. Your job is to REJECT it if the entry is NOT the same biological product / species / dish, even if the names are lexically similar.
+
+User query (original language): "\(queryRu)"
+User query (English): "\(queryEn)"
+
+Selected USDA entry:
+  description: "\(pick.description)"
+  dataType:    "\(pick.dataType)"
+  per 100g:    cal=\(String(format: "%.0f", pick.calories)), P=\(String(format: "%.1f", pick.protein)), F=\(String(format: "%.1f", pick.fat)), C=\(String(format: "%.1f", pick.carbs))
+
+Answer TWO questions:
+1. is_same_product: is this USDA entry the SAME biological product / species / dish as the user asked for? Different species (garlic vs wild garlic, cashew vs chestnut, cilantro vs parsley, sour vs sweet cherry, sweet potato vs potato, veal vs beef, salmon vs trout, buckwheat vs wheat, etc.) → false. Different form (juice / jam / pie / chips / dried / candied / powder / ice cream when the user asked for the whole raw product) → false.
+2. macros_plausible: are the per-100g macros plausible for the QUERIED product's food family? A leafy green with >15g carbs is suspicious. A raw fruit with 0g fiber and >30g carbs is likely juice or dried. Meat with 0g protein is wrong.
+
+Default to false if unsure. It's better to reject a correct pick than accept a wrong one — the caller will fall back to a different data source.
+
+Return ONLY a JSON object:
+{"is_same_product": <true|false>, "macros_plausible": <true|false>, "reason": "<one short sentence>"}
+"""
+        do {
+            let messages = [OpenRouterMessage(role: "user", content: .text(prompt))]
+            let text = try await network.callOpenRouterWithRetry(messages: messages, models: APIConfig.textModels)
+            let json = extractJSON(from: text)
+            let map = try parseJSONMap(json)
+            func bool(_ key: String) -> Bool {
+                if let b = map[key] as? Bool { return b }
+                if let n = map[key] as? NSNumber { return n.boolValue }
+                if let s = map[key] as? String { return s.caseInsensitiveCompare("true") == .orderedSame }
+                return false
             }
-            return true
+            let ok = bool("is_same_product") && bool("macros_plausible")
+            logger.debug("verifyUsdaPick '\(pick.description)' for '\(queryEn)': ok=\(ok) reason=\((map["reason"] as? String) ?? "")")
+            return ok
+        } catch {
+            logger.warning("verifyUsdaPick failed for '\(queryEn)': \(error.localizedDescription) — treating as REJECT")
+            return false
         }
+    }
 
-        let foodsWithCalories = response.foods?.filter { f in
-            f.foodNutrients?.contains(where: { $0.nutrientId == UsdaFoodNutrient.ENERGY && ($0.value ?? 0) > 0 }) == true && isRelevant(f.description)
-        } ?? []
+    /// Generate 2-3 USDA FDC-optimized search queries for a food item.
+    /// Called BEFORE the USDA search — replaces the naive "use food_name_en directly" approach.
+    ///
+    /// USDA indexes food as INGREDIENT + PREPARATION STATE, not as dish names.
+    /// "beef braised" ≠ "beef stew" — stew is a composite dish in USDA.
+    private func generateUsdaSearchQueries(queryRu: String, queryEn: String) async -> [String] {
+        let prompt = """
+You are a USDA Food Data Central (FDC) database search expert. Generate 2-3 English search queries that will find the correct USDA FDC entry for the given food.
 
-        func scoreFood(_ f: UsdaFood) -> Int {
-            let desc = (f.description ?? "").lowercased()
-            let typePriority: Int = {
-                switch f.dataType {
-                case "Survey (FNDDS)": return 200
-                case "SR Legacy": return 150
-                case "Branded": return 50
-                default: return 100
-                }
-            }()
-            let wordMatchBonus = queryWords.filter { descContains(desc, $0) }.count * 30
-            let queryImpliesCooked = queryWords.contains(where: { ["porridge", "cooked", "boiled", "steamed", "stewed", "braised", "baked", "fried", "grilled", "roasted"].contains($0) })
-            let isActuallyRaw = desc.contains("raw") && !desc.contains("from raw")
-            let plainBonus: Int = {
-                if desc.contains(", nfs") { return 25 }
-                if queryImpliesCooked && desc.contains("cooked") { return 30 }
-                if queryImpliesCooked && isActuallyRaw { return -20 }
-                if !queryImpliesCooked && isActuallyRaw { return 20 }
-                return 0
-            }()
+User query (original language): "\(queryRu)"
+User query (English): "\(queryEn)"
 
-            let queryLower = query.lowercased()
-            let dishTypeWords: Set<String> = ["pie", "cake", "cobbler", "turnover", "crisp", "crumble", "tart", "strudel", "juice", "jam", "jelly", "preserve", "sauce", "syrup", "compote", "filling", "ice cream", "yogurt", "smoothie", "shake", "milkshake", "muffin", "scone", "bread", "cookie", "brownie", "pudding", "parfait", "dried", "candied", "glazed", "chocolate"]
-            let derivativePenalty = dishTypeWords.contains(where: { desc.contains($0) && !queryLower.contains($0) }) ? -80 : 0
+USDA FDC names food as INGREDIENT + PREPARATION STATE — NOT as dish names. This is critical:
 
-            let skinBonus: Int = {
-                let querySkin = queryLower.contains("skin")
-                if !querySkin && (queryLower.contains("chicken") || queryLower.contains("breast") || queryLower.contains("thigh")) {
-                    if desc.contains("skinless") || desc.contains("meat only") { return 60 }
-                    if desc.contains("skin eaten") || desc.contains("with skin") { return -40 }
-                }
-                return 0
-            }()
+RULE 1 — MEAT / POULTRY with a cooking method → use the method as an adjective, NEVER a dish name:
+  Correct: "beef braised", "pork roasted", "chicken fried", "lamb braised", "turkey baked"
+  WRONG: "beef stew", "pork ragout", "chicken casserole", "lamb curry", "beef stroganoff"
+  → "beef stew" is a composite DISH (with vegetables and sauce). "beef braised" is the INGREDIENT.
+  → Any word like stew / ragout / casserole / curry / stroganoff / goulash = composite dish → DO NOT use.
+  Examples:
+  - "говядина тушёная" / "beef braised" → ["beef braised", "beef chuck braised"]
+  - "свинина тушёная" / "pork braised" → ["pork braised", "pork shoulder braised"]
+  - "курица тушёная" / "chicken braised" → ["chicken braised", "chicken thigh braised"]
+  - "говядина жареная" / "beef fried" → ["beef pan-fried", "beef fried"]
+  - "свинина запечённая" / "pork roasted" → ["pork roasted", "pork loin roasted"]
+  - "баранина тушёная" / "lamb braised" → ["lamb braised", "lamb shoulder braised"]
 
-            return typePriority + wordMatchBonus + plainBonus + derivativePenalty + skinBonus
+RULE 2 — FISH / SEAFOOD with a cooking method → same rule, never dish names:
+  - "судак тушёный" / "pike-perch braised" → ["pike-perch braised", "walleye braised", "walleye cooked"]
+  - "треска запечённая" / "cod baked" → ["cod baked", "cod roasted"]
+
+RULE 3 — GRAINS / PORRIDGE → use "cooked" or the grain name:
+  - "гречка варёная" / "buckwheat cooked" → ["buckwheat groats cooked", "buckwheat cooked"]
+  - "пшённая каша" / "millet porridge" → ["millet cooked", "millet porridge"]
+
+RULE 4 — REGIONAL / LOCALISED foods → use the closest USDA synonym:
+  - "черемша" / "wild garlic" → ["ramps raw", "wild leek raw"] (USDA uses "ramps", NOT "wild garlic")
+  - "творог" / "cottage cheese" → ["cottage cheese", "cottage cheese lowfat"]
+  - "ряженка" / "cultured milk" → ["kefir", "cultured milk fermented"]
+
+RULE 5 — RAW produce → add "raw":
+  - "помидор" / "tomato" → ["tomato raw"]
+  - "яблоко" / "apple" → ["apple raw"]
+
+RULE 6 — Use American English: beet (not beetroot), eggplant (not aubergine), zucchini (not courgette), cilantro (not coriander leaf).
+
+RULE 7 — Return 2-3 queries, most specific first. If the English query already looks like a correct USDA query (e.g. "salmon salted", "oatmeal cooked"), include it as-is and add one variation.
+
+Return ONLY a JSON array of English strings:
+["query1", "query2"]
+"""
+        do {
+            let messages = [OpenRouterMessage(role: "user", content: .text(prompt))]
+            let text = try await network.callOpenRouterWithRetry(messages: messages, models: APIConfig.textModels)
+            let json = extractJSON(from: text)
+            guard let data = json.data(using: .utf8) else { return [queryEn] }
+            if let array = try? JSONSerialization.jsonObject(with: data) as? [String] {
+                let result = Array(array.filter { !$0.isEmpty }.reduce(into: [String]()) { acc, s in
+                    if !acc.contains(where: { $0.caseInsensitiveCompare(s) == .orderedSame }) { acc.append(s) }
+                }.prefix(3))
+                return result.isEmpty ? [queryEn] : result
+            }
+            if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                let firstArr = obj.values.compactMap { $0 as? [Any] }.first
+                let strings = firstArr?.compactMap { $0 as? String } ?? []
+                let result = Array(strings.filter { !$0.isEmpty }.reduce(into: [String]()) { acc, s in
+                    if !acc.contains(where: { $0.caseInsensitiveCompare(s) == .orderedSame }) { acc.append(s) }
+                }.prefix(3))
+                return result.isEmpty ? [queryEn] : result
+            }
+            return [queryEn]
+        } catch {
+            logger.warning("generateUsdaSearchQueries failed for '\(queryEn)': \(error.localizedDescription)")
+            return [queryEn]
         }
+    }
 
-        guard let best = foodsWithCalories.sorted(by: { scoreFood($0) > scoreFood($1) }).first,
-              let foodNutrients = best.foodNutrients else { return nil }
+    // MARK: - USDA nutrients extraction (post-filter)
+
+    /// Extracts NutrientData from an AI-selected USDA food and applies the same
+    /// post-filters the previous heuristic pipeline had: Branded implausibility guard
+    /// (skips to null so the caller falls through), US enrichment correction for
+    /// flour-based foods, Atwater sanity check.
+    private func buildNutrientsFromUsda(_ food: UsdaFood, query: String, negationCleaned: String) -> NutrientData? {
+        guard let foodNutrients = food.foodNutrients else { return nil }
 
         var nMap: [Int: Double] = [:]
         for fn in foodNutrients {
             if let id = fn.nutrientId, let v = fn.value { nMap[id] = v }
+        }
+
+        // Branded implausibility guard — if AI still picked a Branded outlier, reject
+        // and let the caller fall through to Step 3 (batch AI nutrients).
+        if food.dataType == "Branded" {
+            let prot = nMap[UsdaFoodNutrient.PROTEIN] ?? 0
+            let fat = nMap[UsdaFoodNutrient.FAT] ?? 0
+            let carbs = nMap[UsdaFoodNutrient.CARBS] ?? 0
+            let queryLower = query.lowercased()
+            let highProtOk = ["protein", "powder", "whey", "casein", "isolate", "jerky", "parmesan"].contains(where: { queryLower.contains($0) })
+            let highCarbOk = ["sugar", "honey", "syrup", "candy", "jam", "dried", "flour", "cereal", "granola"].contains(where: { queryLower.contains($0) })
+            let highFatOk = ["oil", "butter", "lard", "ghee", "mayo", "mayonnaise"].contains(where: { queryLower.contains($0) })
+            if (prot > 40 && !highProtOk) || (carbs > 75 && !highCarbOk) || (fat > 70 && !highFatOk) {
+                logger.warning("Branded pick '\(food.description ?? "")' rejected (implausible macros p=\(prot) f=\(fat) c=\(carbs) for '\(queryLower)')")
+                return nil
+            }
         }
 
         let N = UsdaFoodNutrient.self
@@ -671,9 +1014,17 @@ Rules:
             selenium: nMap[N.SELENIUM] ?? 0, iodine: nMap[N.IODINE] ?? 0
         )
 
-        // Flour enrichment correction
-        let flourKeywords = ["pierogi", "dumpling", "pelmeni", "ravioli", "bread", "roll", "bun", "tortilla", "pasta", "noodle", "spaghetti", "pancake", "crepe", "waffle", "cake", "cookie", "muffin", "pie", "pastry", "croissant", "flour", "cereal", "cornmeal", "porridge"]
-        let foodDesc = ((best.description ?? "") + " " + query).lowercased()
+        // US flour-fortification correction: in the US, flour is fortified with B1/B2/B3/B9/iron —
+        // not typical for Eastern Europe. Scale down for flour-based foods.
+        let flourKeywords = [
+            "pierogi", "dumpling", "pelmeni", "ravioli", "wonton",
+            "bread", "roll", "bun", "bagel", "tortilla", "pita", "naan", "flatbread",
+            "pasta", "noodle", "spaghetti", "macaroni", "lasagna",
+            "pancake", "crepe", "waffle", "blini", "blintz",
+            "cake", "cookie", "biscuit", "muffin", "pie", "pastry", "croissant", "doughnut",
+            "flour", "cereal", "cornmeal", "porridge"
+        ]
+        let foodDesc = ((food.description ?? "") + " " + query).lowercased()
         if flourKeywords.contains(where: { foodDesc.contains($0) }) {
             per100g.vitaminB1 *= 0.17
             per100g.vitaminB2 *= 0.10
@@ -682,13 +1033,19 @@ Rules:
             per100g.iron *= 0.26
         }
 
-        // Sanity check
+        // Atwater sanity check + implausible-macro guard (0 protein + 0 carbs + fat > 0 only OK for pure fats/oils).
         let macroCalories = per100g.protein * 4 + per100g.fat * 9 + per100g.carbs * 4
-        let isPureFat = ["oil", "butter", "lard", "ghee", "shortening"].contains(where: { negationCleaned.lowercased().contains($0) })
+        let isPureFat = ["oil", "butter", "lard", "ghee", "shortening", "fat", "grease"].contains(where: { negationCleaned.lowercased().contains($0) })
         let macroPlausible = isPureFat || !(per100g.protein == 0 && per100g.carbs == 0 && per100g.fat > 0)
-        let sane = per100g.calories > 0 && macroCalories <= per100g.calories * 1.3 && macroPlausible
-
-        return sane ? per100g : nil
+        let zeroCalorieFoods = ["water", "tea", "coffee", "herb", "spice", "vinegar", "gelatin"]
+        let queryIsZeroCalorie = zeroCalorieFoods.contains(where: { negationCleaned.lowercased().contains($0) })
+        let sane = (per100g.calories == 0 && per100g.protein == 0 && per100g.fat == 0 && per100g.carbs == 0 && queryIsZeroCalorie)
+            || (per100g.calories > 0 && macroCalories <= per100g.calories * 1.3 && macroPlausible)
+        if !sane {
+            logger.warning("USDA sanity check REJECTED '\(food.description ?? "")' for '\(query)': cal=\(per100g.calories) p=\(per100g.protein) f=\(per100g.fat) c=\(per100g.carbs)")
+            return nil
+        }
+        return per100g
     }
 
     // MARK: - Helpers
@@ -991,6 +1348,23 @@ The fat value MUST equal \(percent). Calories MUST satisfy: protein*4 + fat*9 + 
 - "кава" / "кофе" → "coffee brewed"
 - "капучіно" / "капучино" → "coffee cappuccino"
 
+КРИТИЧЕСКИ ВАЖНО для мяса/птицы с указанием способа приготовления:
+"тушеная/тушена" для МЯСА = "braised" (НЕ "stew" — stew это блюдо с овощами и подливкой!)
+"жареная/смажена" для МЯСА = "fried" или "pan-fried"
+"запечённая/запечена" для МЯСА = "baked" или "roasted"
+"варёная/варена/отварная" для МЯСА = "cooked" или "boiled"
+
+Примеры:
+- "говядина тушеная" / "яловичина тушкована" → "beef braised" (НЕ "beef stew"!)
+- "свинина тушеная" / "свинина тушкована" → "pork braised"
+- "курица тушеная" / "курка тушкована" → "chicken braised"
+- "говядина жареная" / "яловичина смажена" → "beef pan-fried"
+- "свинина запечённая" / "свинина запечена" → "pork roasted"
+- "говядина варёная" / "яловичина варена" → "beef cooked"
+- "телятина тушеная" → "veal braised"
+- "баранина тушеная" / "баранина тушкована" → "lamb braised"
+- "кролик тушеный" / "кролик тушкований" → "rabbit braised"
+
 ВАЖНО: слова "вареная"/"варена"/"варенная"/"варёная"/"отварная" ВСЕ означают "cooked" — всегда добавляй "cooked" в перевод!
 
 ВАЖНО для свежих овощей/фруктов/ягод/зелени:
@@ -1010,6 +1384,37 @@ The fat value MUST equal \(percent). Calories MUST satisfy: protein*4 + fat*9 + 
 - "банан" → "banana raw"
 - "брокколи" → "broccoli raw"
 - "перец болгарский" / "перець солодкий" → "bell pepper raw"
+- "свекла" / "буряк" / "свёкла" → "beet raw"
+- "репа" / "ріпа" → "turnip raw"
+- "редька" / "редька чёрная" → "radish raw"
+- "тыква" / "гарбуз" → "pumpkin raw"
+- "кабачок" / "цукіні" → "zucchini raw"
+- "баклажан" → "eggplant raw"
+- "сельдерей" / "селера" → "celery raw"
+- "петрушка" / "петрушка свіжа" → "parsley raw"
+- "укроп" / "кріп" → "dill raw"
+- "виноград" / "виноград" → "grapes raw"
+- "черешня" / "черешні" → "sweet cherry raw"
+- "вишня" / "вишні" → "sour cherry raw"
+- "черника" / "чорниця" → "blueberry raw"
+- "голубика" / "лохина" → "blueberry raw"
+- "смородина чёрная" / "чорна смородина" → "blackcurrant raw"
+- "смородина красная" / "червона смородина" → "redcurrant raw"
+- "кукуруза" / "кукурудза" → "corn raw"
+- "горох свежий" / "горох" → "peas raw"
+- "фасоль стручковая" / "зелена квасоля" → "green beans raw"
+- "цветная капуста" / "цвітна капуста" → "cauliflower raw"
+- "авокадо" → "avocado raw"
+- "ананас" → "pineapple raw"
+- "манго" → "mango raw"
+- "киви" → "kiwi raw"
+
+ВАЖНО для USDA — используй АМЕРИКАНСКИЙ английский, не британский:
+- "beet", НЕ "beetroot" (beetroot = только чипсы в USDA)
+- "eggplant", НЕ "aubergine"
+- "zucchini", НЕ "courgette"
+- "cilantro", НЕ "coriander" (для зелени)
+- "bell pepper", НЕ "capsicum"
 
 НЕ добавляй "raw" для:
 - мяса/рыбы/птицы/яиц (без указания способа — подразумевается приготовленное)

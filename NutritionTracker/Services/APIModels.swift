@@ -168,6 +168,8 @@ struct OpenFoodFactsResponse: Decodable {
 struct OFFProduct: Decodable {
     let productName: String?
     let productNameEn: String?
+    let productNameRu: String?
+    let productNameUk: String?
     let brands: String?
     let nutriments: OFFNutriments?
     let servingSize: String?
@@ -177,6 +179,8 @@ struct OFFProduct: Decodable {
     enum CodingKeys: String, CodingKey {
         case productName = "product_name"
         case productNameEn = "product_name_en"
+        case productNameRu = "product_name_ru"
+        case productNameUk = "product_name_uk"
         case brands, nutriments
         case servingSize = "serving_size"
         case servingQuantity = "serving_quantity"

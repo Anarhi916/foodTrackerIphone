@@ -11,6 +11,8 @@ struct SavedProductsScreen: View {
     @State private var quickAddEntry: FoodCache?
     @State private var quickAddWeight = "100"
     @State private var deleteEntry: FoodCache?
+    @State private var shareChooserEntry: FoodCache?
+    @State private var qrEntry: FoodCache?
 
     private var filteredFoods: [FoodCache] {
         if searchQuery.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -127,6 +129,36 @@ struct SavedProductsScreen: View {
             Button("Блюдо из ингредиентов") { showAddDishDialog = true }
             Button("Отмена", role: .cancel) {}
         }
+        .confirmationDialog(
+            "Поделиться",
+            isPresented: Binding(
+                get: { shareChooserEntry != nil },
+                set: { if !$0 { shareChooserEntry = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Ссылкой") {
+                if let entry = shareChooserEntry {
+                    let nutrients = viewModel.parseNutrients(entry.nutrientsPer100gJson)
+                    if let link = FoodShare.buildShareLink(nameRu: entry.keyOriginal, nameEn: entry.keyEn, nutrients: nutrients) {
+                        FoodShare.share(link: link, foodName: entry.keyOriginal)
+                    }
+                }
+                shareChooserEntry = nil
+            }
+            Button("QR-кодом") {
+                qrEntry = shareChooserEntry
+                shareChooserEntry = nil
+            }
+            Button("Отмена", role: .cancel) { shareChooserEntry = nil }
+        } message: {
+            if let entry = shareChooserEntry {
+                Text(entry.keyOriginal)
+            }
+        }
+        .sheet(item: $qrEntry) { entry in
+            QrShareSheet(entry: entry, viewModel: viewModel)
+        }
         .sheet(isPresented: $showAddManualDialog) {
             AddCachedFoodSheet(viewModel: viewModel)
         }
@@ -163,6 +195,13 @@ struct SavedProductsScreen: View {
 
             Button { editingEntry = entry } label: {
                 Image(systemName: "pencil.circle.fill").font(.title3).foregroundColor(.orange)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                shareChooserEntry = entry
+            } label: {
+                Image(systemName: "square.and.arrow.up").font(.title3).foregroundColor(.blue)
             }
             .buttonStyle(.plain)
 
@@ -334,16 +373,13 @@ struct EditCachedFoodSheet: View {
 
 // MARK: - Add Custom Dish (from ingredients)
 
-/// Локальная модель строки ингредиента в форме создания блюда.
 private struct IngredientInput: Identifiable {
     let id = UUID()
     var name: String = ""
     var weight: String = ""
+    var cachedFood: FoodCache? = nil
 }
 
-/// Форма создания пользовательского блюда из ингредиентов.
-/// Каждый ингредиент анализируется через `analyzeFoodText`, нутриенты суммируются,
-/// нормализуются к 100г и сохраняются в кеш как обычная запись.
 struct AddCustomDishSheet: View {
     @ObservedObject var viewModel: MainViewModel
     @Environment(\.dismiss) private var dismiss
@@ -351,6 +387,7 @@ struct AddCustomDishSheet: View {
     @State private var ingredients: [IngredientInput] = [IngredientInput()]
     @State private var isProcessing = false
     @State private var errorMessage: String?
+    @FocusState private var focusedIngredient: Int?
 
     private var canSave: Bool {
         guard !dishName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
@@ -373,8 +410,8 @@ struct AddCustomDishSheet: View {
 
                         Text("Ингредиенты").font(.caption).foregroundColor(.secondary).padding(.top, 4)
 
-                        ForEach($ingredients) { $ing in
-                            ingredientRow($ing)
+                        ForEach(ingredients.indices, id: \.self) { idx in
+                            ingredientRow(idx: idx)
                         }
 
                         if let error = errorMessage {
@@ -417,29 +454,89 @@ struct AddCustomDishSheet: View {
     }
 
     @ViewBuilder
-    private func ingredientRow(_ ing: Binding<IngredientInput>) -> some View {
-        let isLast = ingredients.last?.id == ing.wrappedValue.id
-        HStack(spacing: 8) {
-            TextField("Ингредиент", text: ing.name)
+    private func ingredientRow(idx: Int) -> some View {
+        let ing = ingredients[idx]
+        let isLast = idx == ingredients.indices.last
+
+        let suggestions: [FoodCache] = {
+            guard ing.name.count >= 2, ing.cachedFood == nil, focusedIngredient == idx else { return [] }
+            let q = ing.name.lowercased()
+            let translit = transliterateToLatin(q)
+            return viewModel.cachedFoods.filter {
+                $0.keyOriginal.lowercased().contains(q)
+                || $0.keyEn.lowercased().contains(q)
+                || $0.keyOriginal.lowercased().contains(translit)
+                || $0.keyEn.lowercased().contains(translit)
+            }.prefix(5).map { $0 }
+        }()
+
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                TextField(ing.cachedFood != nil ? "Из кеша" : "Ингредиент", text: Binding(
+                    get: { ingredients[idx].name },
+                    set: { ingredients[idx].name = $0; ingredients[idx].cachedFood = nil }
+                ))
                 .textFieldStyle(.roundedBorder)
-            TextField("г", text: ing.weight)
+                .foregroundColor(ing.cachedFood != nil ? .blue : .primary)
+                .focused($focusedIngredient, equals: idx)
+
+                TextField("г", text: Binding(
+                    get: { ingredients[idx].weight },
+                    set: { ingredients[idx].weight = $0 }
+                ))
                 .textFieldStyle(.roundedBorder)
                 .keyboardType(.decimalPad)
                 .frame(width: 70)
-            if isLast {
-                Button { addIngredient() } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.green)
+
+                if isLast == true {
+                    Button { addIngredient() } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.green)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button { removeIngredient(ing.id) } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.red)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-            } else {
-                Button { removeIngredient(ing.wrappedValue.id) } label: {
-                    Image(systemName: "minus.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.red)
+            }
+
+            if !suggestions.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(suggestions, id: \.keyNormalized) { entry in
+                        let nutrients = viewModel.parseNutrients(entry.nutrientsPer100gJson)
+                        Button {
+                            ingredients[idx].name = entry.keyOriginal
+                            ingredients[idx].cachedFood = entry
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(entry.keyOriginal)
+                                        .font(.subheadline)
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                    Text(String(format: "%.0f ккал • Б%.1f Ж%.1f У%.1f /100г",
+                                                nutrients.calories, nutrients.protein, nutrients.fat, nutrients.carbs))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                        }
+                        .buttonStyle(.plain)
+                        if entry.keyNormalized != suggestions.last?.keyNormalized {
+                            Divider().padding(.horizontal, 12)
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray5)))
+                .padding(.trailing, 78)
             }
         }
     }
@@ -455,11 +552,11 @@ struct AddCustomDishSheet: View {
 
     private func saveDish() {
         let trimmedName = dishName.trimmingCharacters(in: .whitespaces)
-        let valid: [(name: String, weight: Double)] = ingredients.compactMap { ing in
+        let valid: [(name: String, weight: Double, cached: FoodCache?)] = ingredients.compactMap { ing in
             let n = ing.name.trimmingCharacters(in: .whitespaces)
             let w = Double(ing.weight.replacingOccurrences(of: ",", with: "."))
             guard !n.isEmpty, let weight = w, weight > 0 else { return nil }
-            return (n, weight)
+            return (n, weight, ing.cachedFood)
         }
         guard !trimmedName.isEmpty, !valid.isEmpty else { return }
 
@@ -476,6 +573,60 @@ struct AddCustomDishSheet: View {
                 await MainActor.run {
                     isProcessing = false
                     errorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+}
+
+// MARK: - QR share sheet
+
+struct QrShareSheet: View {
+    let entry: FoodCache
+    @ObservedObject var viewModel: MainViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        let nutrients = viewModel.parseNutrients(entry.nutrientsPer100gJson)
+        let link = FoodShare.buildShareLink(nameRu: entry.keyOriginal, nameEn: entry.keyEn, nutrients: nutrients)
+        let qr: UIImage? = link.flatMap { FoodShare.generateQrImage(from: $0) }
+
+        NavigationStack {
+            VStack(spacing: 16) {
+                Text(entry.keyOriginal)
+                    .font(.title3).bold()
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 8)
+                Text("Наведите камеру приложения на код")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                if let img = qr {
+                    Image(uiImage: img)
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                        .padding()
+                        .background(Color.white)
+                        .cornerRadius(12)
+                        .padding(.horizontal, 12)
+                } else {
+                    Text("Не удалось сгенерировать QR-код")
+                        .foregroundColor(.red)
+                }
+
+                Text(String(format: "%.0f ккал • Б%.1f Ж%.1f У%.1f /100г",
+                            nutrients.calories, nutrients.protein, nutrients.fat, nutrients.carbs))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Spacer()
+            }
+            .navigationTitle("QR-код")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Закрыть") { dismiss() }
                 }
             }
         }
