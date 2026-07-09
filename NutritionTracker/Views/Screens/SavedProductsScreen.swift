@@ -70,6 +70,19 @@ struct SavedProductsScreen: View {
                 }
             }
         }
+        .overlay {
+            if viewModel.isLoading {
+                ZStack {
+                    Color.black.opacity(0.3).ignoresSafeArea()
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("Обогащаем данные...").font(.subheadline)
+                    }
+                    .padding(24)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemBackground)))
+                }
+            }
+        }
         .background(Color(.systemGray6))
         .navigationTitle("Сохранённые продукты")
         .navigationBarTitleDisplayMode(.inline)
@@ -89,7 +102,10 @@ struct SavedProductsScreen: View {
         }
         .alert("Удалить все продукты?", isPresented: $showDeleteAllAlert) {
             Button("Удалить всё", role: .destructive) { viewModel.deleteAllCachedFoods() }
+            Button("Только штрих-коды", role: .destructive) { viewModel.deleteAllBarcodeAndSupplementEntries() }
             Button("Отмена", role: .cancel) {}
+        } message: {
+            Text("Удалить все сохранённые продукты или только добавленные по штрих-коду и БАД?")
         }
         .alert("Удалить?", isPresented: Binding(
             get: { deleteEntry != nil },
@@ -121,7 +137,10 @@ struct SavedProductsScreen: View {
             Button("Отмена", role: .cancel) { quickAddEntry = nil }
         } message: {
             if let entry = quickAddEntry {
-                Text(entry.keyOriginal)
+                let nutrients = viewModel.parseNutrients(entry.nutrientsPer100gJson)
+                let w = Double(quickAddWeight) ?? 100
+                let factor = w / 100.0
+                Text("\(entry.keyOriginal)\n\(String(format: "%.0f ккал • Б%.1f Ж%.1f У%.1f", nutrients.calories * factor, nutrients.protein * factor, nutrients.fat * factor, nutrients.carbs * factor))")
             }
         }
         .confirmationDialog("Что добавить?", isPresented: $showAddTypeDialog, titleVisibility: .visible) {
@@ -152,8 +171,8 @@ struct SavedProductsScreen: View {
             }
             Button("Отмена", role: .cancel) { shareChooserEntry = nil }
         } message: {
-            if let entry = shareChooserEntry {
-                Text(entry.keyOriginal)
+            if shareChooserEntry != nil {
+                Text("Отправьте ссылку через мессенджер или покажите QR-код собеседнику.")
             }
         }
         .sheet(item: $qrEntry) { entry in

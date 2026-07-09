@@ -6,6 +6,30 @@ struct IdentifiableNutrient: Identifiable {
     var id: String { key }
 }
 
+/// Per-nutrient upper-limit ratios (as a fraction of the daily target) used to color
+/// the progress bars. Matches the Android app: strict limits for nutrients that are
+/// harmful in excess (calories, saturated fat, sodium, fat-soluble vitamins A/D, toxic
+/// minerals), lenient for water-soluble vitamins and beneficial fats.
+enum NutrientLimits {
+    private static let ratios: [String: Double] = [
+        // Macros
+        "calories": 1.15, "protein": 1.8, "fat": 1.3, "carbs": 1.3, "fiber": 3.0,
+        // Fat details
+        "saturatedFat": 1.0, "monounsaturatedFat": 3.0, "polyunsaturatedFat": 3.0, "cholesterol": 1.3,
+        // Vitamins
+        "vitaminA": 1.3, "vitaminB1": 2.0, "vitaminB2": 2.0, "vitaminB3": 2.0, "vitaminB5": 2.0,
+        "vitaminB6": 2.0, "vitaminB7": 2.0, "vitaminB9": 2.0, "vitaminB12": 2.0,
+        "vitaminC": 2.5, "vitaminD": 1.3, "vitaminE": 1.5, "vitaminK": 1.5,
+        // Minerals
+        "calcium": 1.5, "iron": 1.3, "magnesium": 1.5, "phosphorus": 1.5, "potassium": 1.5,
+        "sodium": 1.2, "zinc": 1.5, "copper": 1.3, "manganese": 1.5, "selenium": 1.3, "iodine": 1.3
+    ]
+
+    static func upperRatio(for key: String) -> Double {
+        ratios[key] ?? 1.5
+    }
+}
+
 struct NutrientProgressSection: View {
     let title: String
     let nutrients: [(key: String, name: String, value: Double)]
@@ -76,9 +100,13 @@ struct NutrientProgressBar: View {
     let value: Double
     let target: Double
     let hasTopFoods: Bool
-    var upperRatio: Double = 1.5
+    var upperRatio: Double? = nil
     let onTap: () -> Void
     let onInfoTap: () -> Void
+
+    private var effectiveUpperRatio: Double {
+        upperRatio ?? NutrientLimits.upperRatio(for: key)
+    }
 
     private var percentage: Double {
         guard target > 0 else { return 0 }
@@ -87,8 +115,8 @@ struct NutrientProgressBar: View {
 
     private var progressColor: Color {
         let ratio = percentage
-        if ratio > upperRatio * 1.3 { return .red }
-        if ratio > upperRatio { return .orange }
+        if ratio > effectiveUpperRatio * 1.3 { return .red }
+        if ratio > effectiveUpperRatio { return .orange }
         if ratio >= 0.8 { return .green }
         if ratio >= 0.4 { return .yellow }
         return .red
@@ -233,33 +261,37 @@ struct NutrientTopFoodsSheet: View {
     let nutrientName: String
     @Environment(\.dismiss) private var dismiss
 
-    private var foods: [(food: String, valuePer100g: String)] {
-        NutrientTopFoods.data[nutrientKey] ?? []
+    private var info: NutrientTopFoods.NutrientInfo? {
+        NutrientTopFoods.data[nutrientKey]
+    }
+
+    private var sortedFoods: [NutrientTopFoods.FoodSource] {
+        (info?.foods ?? []).sorted { $0.per100g > $1.per100g }
     }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                if foods.isEmpty {
-                    Spacer()
-                    Text("Нет данных").foregroundColor(.secondary)
-                    Spacer()
-                } else {
-                    Text("Содержание на 100 г продукта")
+                if let info, !sortedFoods.isEmpty {
+                    Text("Содержание на 100 г продукта (% от дневной нормы)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                         .padding(.top, 12)
                         .padding(.bottom, 4)
 
                     ScrollView {
                         VStack(spacing: 0) {
-                            ForEach(Array(foods.enumerated()), id: \.offset) { index, item in
+                            ForEach(Array(sortedFoods.enumerated()), id: \.offset) { index, item in
+                                let pct = info.dailyValue > 0 ? Int(item.per100g / info.dailyValue * 100) : 0
                                 HStack {
-                                    Text("\(index + 1). \(item.food)")
+                                    Text("\(index + 1). \(item.name)")
                                         .font(.body)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                    Text(item.valuePer100g)
+                                    Text("\(formatFoodValue(item.per100g)) \(info.unit) (\(pct)% дн.)")
                                         .font(.callout)
+                                        .fontWeight(.medium)
                                         .foregroundColor(.secondary)
                                 }
                                 .padding(.horizontal)
@@ -268,10 +300,14 @@ struct NutrientTopFoodsSheet: View {
                             }
                         }
                     }
+                } else {
+                    Spacer()
+                    Text("Нет данных").foregroundColor(.secondary)
+                    Spacer()
                 }
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Топ: \(nutrientName)")
+            .navigationTitle("Топ-15: \(nutrientName)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -279,7 +315,14 @@ struct NutrientTopFoodsSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
         .presentationBackground(.thickMaterial)
+    }
+
+    private func formatFoodValue(_ value: Double) -> String {
+        if value == value.rounded() {
+            return String(format: "%.0f", value)
+        }
+        return String(format: "%.1f", value)
     }
 }

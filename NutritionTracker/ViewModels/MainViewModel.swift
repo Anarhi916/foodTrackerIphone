@@ -372,6 +372,11 @@ class MainViewModel: ObservableObject {
         cachedFoods = []
     }
 
+    func deleteAllBarcodeAndSupplementEntries() {
+        repo.deleteAllBarcodeAndSupplementEntries()
+        cachedFoods = repo.getAllCachedFoods()
+    }
+
     func addManualCachedFood(nameRu: String, nameEn: String, nutrients: NutrientData) {
         repo.addManualCachedFood(nameRu: nameRu, nameEn: nameEn, nutrients: nutrients)
         cachedFoods = repo.getAllCachedFoods()
@@ -429,10 +434,19 @@ class MainViewModel: ObservableObject {
     }
 
     func addCachedFoodToToday(_ cache: FoodCache, weight: Double) {
-        let per100g = repo.parseNutrients(cache.nutrientsPer100gJson)
-        let nutrients = per100g * (weight / 100.0)
-        repo.addFoodEntry(foodName: cache.keyOriginal, weightGrams: weight, nutrients: nutrients, source: "cache", fromCache: true)
-        refreshTodayData()
+        isLoading = true
+        Task {
+            defer { isLoading = false }
+            let per100g: NutrientData
+            if let enriched = try? await repo.enrichFatDetailsForCachedEntry(cache) {
+                per100g = enriched
+            } else {
+                per100g = repo.parseNutrients(cache.nutrientsPer100gJson)
+            }
+            let nutrients = per100g * (weight / 100.0)
+            repo.addFoodEntry(foodName: cache.keyOriginal, weightGrams: weight, nutrients: nutrients, source: "manual", fromCache: true)
+            refreshTodayData()
+        }
     }
 
     // MARK: - Helpers

@@ -99,6 +99,8 @@ Calculate daily norms and return ONLY a JSON object with this EXACT structure (a
 
     func deleteAllCachedFoods() { db.deleteAllCachedFoods() }
 
+    func deleteAllBarcodeAndSupplementEntries() { db.deleteAllBarcodeAndSupplementEntries() }
+
     func addManualCachedFood(nameRu: String, nameEn: String, nutrients: NutrientData) {
         db.saveToCache(keyOriginal: nameRu, keyEn: nameEn, nutrientsPer100g: nutrients)
     }
@@ -111,6 +113,14 @@ Calculate daily norms and return ONLY a JSON object with this EXACT structure (a
 
     func parseNutrients(_ json: String) -> NutrientData {
         db.parseNutrients(json) ?? NutrientData()
+    }
+
+    /// Public wrapper: parse a cached entry and enrich its fat breakdown if missing.
+    /// Used before quick-adding a saved product so legacy cache entries get complete
+    /// saturated/mono/poly/cholesterol data (matches Android `enrichFatDetailsForCachedEntry`).
+    func enrichFatDetailsForCachedEntry(_ entry: FoodCache) async throws -> NutrientData {
+        let nutrients = parseNutrients(entry.nutrientsPer100gJson)
+        return try await enrichFatDetailsIfNeeded(nutrients, foodNameEn: entry.keyEn, cacheEntry: entry)
     }
 
     // MARK: - Main Food Analysis Pipeline

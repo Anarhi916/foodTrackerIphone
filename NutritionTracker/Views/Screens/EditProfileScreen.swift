@@ -37,6 +37,7 @@ private struct ProfileDataTab: View {
     @State private var weight: String = ""
     @State private var height: String = ""
     @State private var goals: String = ""
+    @State private var localError: String?
 
     var body: some View {
         ScrollView {
@@ -95,7 +96,7 @@ private struct ProfileDataTab: View {
                     ProgressView("Пересчитываем нормы...")
                 }
 
-                if let error = viewModel.errorMessage {
+                if let error = localError ?? viewModel.errorMessage {
                     Text(error).foregroundColor(.red).font(.caption)
                 }
 
@@ -105,10 +106,10 @@ private struct ProfileDataTab: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(isValid ? Color.green : Color.gray)
+                        .background(Color.green)
                         .cornerRadius(12)
                 }
-                .disabled(!isValid || viewModel.isLoading)
+                .disabled(viewModel.isLoading)
             }
             .padding()
         }
@@ -116,23 +117,23 @@ private struct ProfileDataTab: View {
             if let profile = viewModel.userProfile {
                 gender = profile.gender
                 age = String(profile.age)
-                weight = String(profile.weightKg)
-                height = String(profile.heightCm)
+                weight = String(Int(profile.weightKg))
+                height = String(Int(profile.heightCm))
                 goals = profile.goalsText
             }
         }
     }
 
-    private var isValid: Bool {
-        guard let a = Int(age), a > 0,
-              let w = Double(weight), w > 0,
-              let h = Double(height), h > 0,
-              !goals.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
-        return true
-    }
-
     private func submit() {
-        guard let a = Int(age), let w = Double(weight), let h = Double(height) else { return }
+        guard let a = Int(age), let w = Double(weight), let h = Double(height) else {
+            localError = "Введите корректные возраст, вес и рост"
+            return
+        }
+        if goals.trimmingCharacters(in: .whitespaces).isEmpty {
+            localError = "Опишите ваши цели"
+            return
+        }
+        localError = nil
         viewModel.updateProfile(gender: gender, age: a, weight: w, height: h, goals: goals) {
             dismiss()
         }
@@ -146,35 +147,23 @@ private struct DailyNormsTab: View {
     @State private var editMode = false
     @State private var editedValues: [String: String] = [:]
 
+    // Grouping matches the Android app exactly (slices over allNutrientsList):
+    //   БЖУ и Калории       — first 5
+    //   Витамины            — next 13
+    //   Минералы и микро…   — the rest
     private var macroKeys: [(key: String, displayName: String, value: Double)] {
-        guard let norms = viewModel.dailyNorms else { return [] }
-        return [
-            ("calories", "Калории (ккал)", norms.calories),
-            ("protein", "Белки (г)", norms.protein),
-            ("fat", "Жиры (г)", norms.fat),
-            ("carbs", "Углеводы (г)", norms.carbs),
-            ("fiber", "Клетчатка (г)", norms.fiber)
-        ]
-    }
-
-    private var fatDetailKeys: [(key: String, displayName: String, value: Double)] {
-        guard let norms = viewModel.dailyNorms else { return [] }
-        return [
-            ("saturatedFat", "Насыщенные жиры (г)", norms.saturatedFat),
-            ("monounsaturatedFat", "Мононенасыщенные жиры (г)", norms.monounsaturatedFat),
-            ("polyunsaturatedFat", "Полиненасыщенные жиры (г)", norms.polyunsaturatedFat),
-            ("cholesterol", "Холестерин (мг)", norms.cholesterol)
-        ]
+        let all = viewModel.dailyNorms?.allNutrientsList() ?? []
+        return Array(all.prefix(5))
     }
 
     private var vitaminKeys: [(key: String, displayName: String, value: Double)] {
         let all = viewModel.dailyNorms?.allNutrientsList() ?? []
-        return Array(all.dropFirst(9).prefix(13))
+        return Array(all.dropFirst(5).prefix(13))
     }
 
     private var mineralKeys: [(key: String, displayName: String, value: Double)] {
         let all = viewModel.dailyNorms?.allNutrientsList() ?? []
-        return Array(all.dropFirst(22))
+        return Array(all.dropFirst(18))
     }
 
     var body: some View {
@@ -213,9 +202,8 @@ private struct DailyNormsTab: View {
                     }
 
                     normsSection(title: "БЖУ и Калории", items: macroKeys)
-                    normsSection(title: "Жиры (детализация)", items: fatDetailKeys)
                     normsSection(title: "Витамины", items: vitaminKeys)
-                    normsSection(title: "Минералы", items: mineralKeys)
+                    normsSection(title: "Минералы и микроэлементы", items: mineralKeys)
                 }
                 .padding()
             }

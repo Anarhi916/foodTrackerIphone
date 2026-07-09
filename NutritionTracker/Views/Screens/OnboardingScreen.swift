@@ -7,15 +7,16 @@ struct OnboardingScreen: View {
     @State private var weight: String = ""
     @State private var height: String = ""
     @State private var goals: String = ""
+    @State private var localError: String?
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                Text("Добро пожаловать!")
+                Text("Настройка профиля")
                     .font(.largeTitle)
                     .bold()
 
-                Text("Заполните профиль для расчёта персональных норм питания")
+                Text("Заполните данные для расчёта дневной нормы питания")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -66,35 +67,35 @@ struct OnboardingScreen: View {
                     ProgressView("Рассчитываем нормы...")
                 }
 
-                if let error = viewModel.errorMessage {
+                if let error = localError ?? viewModel.errorMessage {
                     Text(error).foregroundColor(.red).font(.caption)
                 }
 
                 Button(action: submit) {
-                    Text("Рассчитать нормы")
+                    Text("Рассчитать нормы питания")
                         .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(isValid ? Color.green : Color.gray)
+                        .background(Color.green)
                         .cornerRadius(12)
                 }
-                .disabled(!isValid || viewModel.isLoading)
+                .disabled(viewModel.isLoading)
             }
             .padding()
         }
     }
 
-    private var isValid: Bool {
-        guard let a = Int(age), a > 0,
-              let w = Double(weight), w > 0,
-              let h = Double(height), h > 0,
-              !goals.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
-        return true
-    }
-
     private func submit() {
-        guard let a = Int(age), let w = Double(weight), let h = Double(height) else { return }
+        guard let a = Int(age), let w = Double(weight), let h = Double(height) else {
+            localError = "Введите корректные возраст, вес и рост"
+            return
+        }
+        if goals.trimmingCharacters(in: .whitespaces).isEmpty {
+            localError = "Опишите ваши цели"
+            return
+        }
+        localError = nil
         viewModel.updateProfile(gender: gender, age: a, weight: w, height: h, goals: goals) {
             // Profile saved, app will navigate to main
         }

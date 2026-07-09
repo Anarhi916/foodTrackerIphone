@@ -16,6 +16,7 @@ struct StatisticsScreen: View {
     @State private var totals: NutrientData?
     @State private var numDays: Int = 7
     @State private var isLoading = false
+    @State private var csvShareItem: CSVShareItem?
 
     private let isoFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -83,6 +84,9 @@ struct StatisticsScreen: View {
                 loadData()
             }
         }
+        .sheet(item: $csvShareItem) { item in
+            ActivityView(items: [item.url])
+        }
     }
 
     private var periodCard: some View {
@@ -117,9 +121,44 @@ struct StatisticsScreen: View {
             Text("\(displayFormatter.string(from: effectiveStart)) — \(displayFormatter.string(from: effectiveEnd)) (\(numDays) дн.)")
                 .font(.caption)
                 .foregroundColor(.secondary)
+
+            Button { exportCSV() } label: {
+                Label("Экспорт в Excel", systemImage: "square.and.arrow.up")
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray5)))
+    }
+
+    private func exportCSV() {
+        let start = isoFormatter.string(from: effectiveStart)
+        let end = isoFormatter.string(from: effectiveEnd)
+        let entries = NutritionRepository.shared.getEntriesForDateRange(start: start, end: end)
+            .sorted { $0.date < $1.date }
+
+        var csv = "\u{FEFF}"
+        csv += "Дата,Продукт,Вес (г)\n"
+        var lastDate = ""
+        for entry in entries {
+            if !lastDate.isEmpty && entry.date != lastDate {
+                csv += "\(entry.date),,\n"
+            }
+            lastDate = entry.date
+            let escapedName = entry.foodName.replacingOccurrences(of: "\"", with: "\"\"")
+            csv += "\(entry.date),\"\(escapedName)\",\(Int(entry.weightGrams))\n"
+        }
+
+        let fileName = "nutrition_\(start)_\(end).csv"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        do {
+            try csv.data(using: .utf8)?.write(to: url)
+            csvShareItem = CSVShareItem(url: url)
+        } catch {
+            // Silently ignore — nothing to share if the file can't be written
+        }
     }
 
     private func loadData() {
@@ -218,4 +257,21 @@ private struct DatePickerSheet: View {
                 }
         }
     }
+}
+
+// MARK: - CSV Share
+
+private struct CSVShareItem: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+private struct ActivityView: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

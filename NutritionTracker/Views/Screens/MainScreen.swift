@@ -19,12 +19,6 @@ struct MainScreen: View {
                     // Food input
                     foodInputSection
 
-                    // Loading indicator
-                    if viewModel.isLoading {
-                        ProgressView("Анализ...")
-                            .padding()
-                    }
-
                     // Error message
                     if let error = viewModel.errorMessage {
                         HStack {
@@ -51,6 +45,19 @@ struct MainScreen: View {
                 .padding()
             }
             .background(Color(.systemGray6))
+            .overlay {
+                if viewModel.isLoading {
+                    ZStack {
+                        Color.black.opacity(0.3).ignoresSafeArea()
+                        VStack(spacing: 12) {
+                            ProgressView()
+                            Text("Анализируем…").font(.subheadline)
+                        }
+                        .padding(24)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemBackground)))
+                    }
+                }
+            }
             .navigationTitle("Питание от Андрюхи")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -573,9 +580,10 @@ struct MainScreen: View {
     private var barcodeWeightSheet: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                Text(viewModel.barcodeProductName ?? "").font(.headline)
+                Text("Найден продукт").font(.headline)
+                Text(viewModel.barcodeProductName ?? "").font(.subheadline).bold()
                 HStack {
-                    Text("Вес (г):")
+                    Text("Вес употреблённого (г):")
                     TextField("", text: $viewModel.barcodeWeight)
                         .textFieldStyle(.roundedBorder)
                         .keyboardType(.numberPad)
@@ -599,7 +607,11 @@ struct MainScreen: View {
     private var photoEditSheet: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                Text("Редактировать").font(.headline)
+                Text("Распознано по фото").font(.headline)
+                Text("Проверьте и при необходимости отредактируйте:")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 TextField("Название", text: $viewModel.photoFoodName, axis: .vertical)
                     .lineLimit(1...6)
                     .textFieldStyle(.roundedBorder)
@@ -618,7 +630,7 @@ struct MainScreen: View {
                     Button("Отмена") { viewModel.dismissPhotoEditDialog() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Анализ") { viewModel.confirmPhotoAnalysis() }
+                    Button("Анализировать") { viewModel.confirmPhotoAnalysis() }
                 }
             }
         }
@@ -628,8 +640,9 @@ struct MainScreen: View {
     private var supplementSheet: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                Text(viewModel.supplementName ?? "БАД").font(.headline)
-                Text("Порция: \(viewModel.supplementServingSize)").font(.subheadline).foregroundColor(.secondary)
+                Text("💊 Найден БАД").font(.headline)
+                Text(viewModel.supplementName ?? "БАД").font(.subheadline).bold()
+                Text("Размер порции: \(viewModel.supplementServingSize)").font(.subheadline).foregroundColor(.secondary)
                 HStack {
                     Text("Количество порций:")
                     TextField("", text: $viewModel.supplementServings)
@@ -649,6 +662,6 @@ struct MainScreen: View {
                 }
             }
         }
-        .presentationDetents([.height(250)])
+        .presentationDetents([.height(280)])
     }
 }

@@ -181,6 +181,23 @@ class DatabaseManager {
         try? context.save()
     }
 
+    /// Deletes only the products that originate from a barcode or supplement scan.
+    /// Matches the Android behavior: removes every cache row whose keyEn is shared
+    /// with a hidden `barcode:` / `supplement:` entry (i.e. the visible product plus
+    /// its technical barcode/supplement rows).
+    func deleteAllBarcodeAndSupplementEntries() {
+        let all = (try? context.fetch(FetchDescriptor<FoodCache>())) ?? []
+        let targetKeyEns = Set(
+            all.filter { $0.keyOriginal.hasPrefix("barcode:") || $0.keyOriginal.hasPrefix("supplement:") }
+               .map { $0.keyEn }
+        )
+        guard !targetKeyEns.isEmpty else { return }
+        for item in all where targetKeyEns.contains(item.keyEn) {
+            context.delete(item)
+        }
+        try? context.save()
+    }
+
     func updateCachedFoodNutrients(_ entry: FoodCache, nutrients: NutrientData) {
         entry.nutrientsPer100gJson = encodeNutrients(nutrients)
         try? context.save()

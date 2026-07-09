@@ -9,7 +9,7 @@ struct HistoryScreen: View {
         ScrollView {
             VStack(spacing: 12) {
                 if allDates.isEmpty {
-                    Text("Нет данных")
+                    Text("Нет данных за последние 14 дней")
                         .foregroundColor(.secondary)
                         .padding(.top, 40)
                 } else {
@@ -21,9 +21,9 @@ struct HistoryScreen: View {
             .padding()
         }
         .background(Color(.systemGray6))
-        .navigationTitle("История")
+        .navigationTitle("История (14 дней)")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { allDates = NutritionRepository.shared.getAllDates() }
+        .onAppear { allDates = NutritionRepository.shared.getRecentDates() }
     }
 
     private func dayCard(for date: String) -> some View {
@@ -60,10 +60,10 @@ struct HistoryScreen: View {
 
                     // Summary chips
                     HStack(spacing: 8) {
-                        summaryChip("Ккал", value: "\(Int(totals.calories))")
-                        summaryChip("Б", value: String(format: "%.0f", totals.protein))
-                        summaryChip("Ж", value: String(format: "%.0f", totals.fat))
-                        summaryChip("У", value: String(format: "%.0f", totals.carbs))
+                        summaryChip("Ккал", value: String(format: "%.0f", totals.calories))
+                        summaryChip("Б", value: String(format: "%.1f г", totals.protein))
+                        summaryChip("Ж", value: String(format: "%.1f г", totals.fat))
+                        summaryChip("У", value: String(format: "%.1f г", totals.carbs))
                     }
 
                     // Entry list
@@ -77,17 +77,21 @@ struct HistoryScreen: View {
                         }
                     }
 
-                    // Progress bars for macros
+                    // Progress bars for macros + fat details
                     if let norms = viewModel.dailyNorms {
                         Divider()
-                        let macros: [(String, Double, Double)] = [
-                            ("Калории", totals.calories, norms.calories),
-                            ("Белки", totals.protein, norms.protein),
-                            ("Жиры", totals.fat, norms.fat),
-                            ("Углеводы", totals.carbs, norms.carbs)
+                        let bars: [(name: String, value: Double, target: Double, unit: String, upperRatio: Double)] = [
+                            ("Калории", totals.calories, norms.calories, "ккал", 1.5),
+                            ("Белки", totals.protein, norms.protein, "г", 1.5),
+                            ("Жиры", totals.fat, norms.fat, "г", 1.5),
+                            ("Углеводы", totals.carbs, norms.carbs, "г", 1.5),
+                            ("Насыщ. жиры", totals.saturatedFat, norms.saturatedFat, "г", 1.0),
+                            ("Мононенасыщ.", totals.monounsaturatedFat, norms.monounsaturatedFat, "г", 3.0),
+                            ("Полиненасыщ.", totals.polyunsaturatedFat, norms.polyunsaturatedFat, "г", 3.0),
+                            ("Холестерин", totals.cholesterol, norms.cholesterol, "мг", 1.3)
                         ]
-                        ForEach(macros, id: \.0) { name, value, target in
-                            historyProgressBar(name: name, value: value, target: target)
+                        ForEach(bars, id: \.name) { bar in
+                            historyProgressBar(name: bar.name, value: bar.value, target: bar.target, unit: bar.unit, upperRatio: bar.upperRatio)
                         }
                     }
                 }
@@ -107,14 +111,20 @@ struct HistoryScreen: View {
         .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray4).opacity(0.5)))
     }
 
-    private func historyProgressBar(name: String, value: Double, target: Double) -> some View {
+    private func historyProgressBar(name: String, value: Double, target: Double, unit: String, upperRatio: Double) -> some View {
         let pct = target > 0 ? value / target : 0
-        let color: Color = pct > 1.3 ? .red : pct >= 0.8 ? .green : pct >= 0.4 ? .yellow : .red
+        let color: Color = {
+            if pct > upperRatio * 1.3 { return .red }
+            if pct > upperRatio { return .orange }
+            if pct >= 0.8 { return .green }
+            if pct >= 0.4 { return .yellow }
+            return .red
+        }()
         return VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Text(name).font(.caption2)
                 Spacer()
-                Text(String(format: "%.0f / %.0f (%d%%)", value, target, Int(pct * 100)))
+                Text(String(format: "%.1f / %.1f %@ (%d%%)", value, target, unit, Int(pct * 100)))
                     .font(.caption2)
             }
             GeometryReader { geo in
