@@ -1,9 +1,17 @@
 import SwiftUI
 
 enum StatPeriod: String, CaseIterable {
-    case week = "Неделя"
-    case month = "Месяц"
-    case custom = "Свой период"
+    case week
+    case month
+    case custom
+
+    var displayName: String {
+        switch self {
+        case .week: return String(localized: "Неделя")
+        case .month: return String(localized: "Месяц")
+        case .custom: return String(localized: "Свой период")
+        }
+    }
 }
 
 struct StatisticsScreen: View {
@@ -20,13 +28,15 @@ struct StatisticsScreen: View {
 
     private let isoFormatter: DateFormatter = {
         let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd"
         return f
     }()
 
     private let displayFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "dd.MM.yyyy"
+        f.locale = .current
+        f.setLocalizedDateFormatFromTemplate("ddMMyyyy")
         return f
     }()
 
@@ -55,10 +65,10 @@ struct StatisticsScreen: View {
                     ProgressView().padding(.top, 40)
                 } else if let t = totals {
                     let normForPeriod = viewModel.dailyNorms.map { $0 * Double(numDays) }
-                    NutrientStatCard(title: "БЖУ и Калории", items: t.macrosList(), normItems: normForPeriod?.macrosList())
-                    NutrientStatCard(title: "Витамины", items: t.vitaminsList(), normItems: normForPeriod?.vitaminsList())
-                    NutrientStatCard(title: "Минералы и микроэлементы", items: t.mineralsList(), normItems: normForPeriod?.mineralsList())
-                    NutrientStatCard(title: "Жиры (детально)", items: t.fatDetailsList(), normItems: normForPeriod?.fatDetailsList())
+                    NutrientStatCard(title: String(localized: "БЖУ и Калории"), items: t.macrosList(), normItems: normForPeriod?.macrosList())
+                    NutrientStatCard(title: String(localized: "Витамины"), items: t.vitaminsList(), normItems: normForPeriod?.vitaminsList())
+                    NutrientStatCard(title: String(localized: "Минералы и микроэлементы"), items: t.mineralsList(), normItems: normForPeriod?.mineralsList())
+                    NutrientStatCard(title: String(localized: "Жиры (детально)"), items: t.fatDetailsList(), normItems: normForPeriod?.fatDetailsList())
                 }
             }
             .padding(16)
@@ -95,7 +105,7 @@ struct StatisticsScreen: View {
 
             Picker("", selection: $selectedPeriod) {
                 ForEach(StatPeriod.allCases, id: \.self) { period in
-                    Text(period.rawValue).tag(period)
+                    Text(period.displayName).tag(period)
                 }
             }
             .pickerStyle(.segmented)
@@ -118,7 +128,7 @@ struct StatisticsScreen: View {
                 }
             }
 
-            Text("\(displayFormatter.string(from: effectiveStart)) — \(displayFormatter.string(from: effectiveEnd)) (\(numDays) дн.)")
+            Text("\(displayFormatter.string(from: effectiveStart)) — \(displayFormatter.string(from: effectiveEnd)) \(String(format: String(localized: "(%lld дн.)"), numDays))")
                 .font(.caption)
                 .foregroundColor(.secondary)
 
@@ -140,7 +150,7 @@ struct StatisticsScreen: View {
             .sorted { $0.date < $1.date }
 
         var csv = "\u{FEFF}"
-        csv += "Дата,Продукт,Вес (г)\n"
+        csv += String(localized: "Дата,Продукт,Вес (г)") + "\n"
         var lastDate = ""
         for entry in entries {
             if !lastDate.isEmpty && entry.date != lastDate {

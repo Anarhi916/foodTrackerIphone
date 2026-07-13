@@ -28,6 +28,8 @@ class DatabaseManager {
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }
+        // Backfill the language-neutral cache key for rows created before this field existed.
+        backfillKeyEnNormalizedIfNeeded()
     }
 
     var context: ModelContext {
@@ -94,9 +96,9 @@ class DatabaseManager {
         return Array(Set(entries.map(\.date))).sorted(by: >)
     }
 
-    func addFoodEntry(date: String, foodName: String, weightGrams: Double, nutrients: NutrientData, source: String = "manual", fromCache: Bool = false) {
+    func addFoodEntry(date: String, foodName: String, foodNameEn: String = "", weightGrams: Double, nutrients: NutrientData, source: String = "manual", fromCache: Bool = false) {
         let json = (try? JSONEncoder().encode(nutrients)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
-        let entry = FoodEntry(date: date, foodName: foodName, weightGrams: weightGrams, nutrientsJson: json, source: source, fromCache: fromCache)
+        let entry = FoodEntry(date: date, foodName: foodName, foodNameEn: foodNameEn, weightGrams: weightGrams, nutrientsJson: json, source: source, fromCache: fromCache)
         context.insert(entry)
         try? context.save()
     }
@@ -131,25 +133,27 @@ class DatabaseManager {
         let normalized = normalizeKey(key)
         let descriptor = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyNormalized == normalized })
         if let found = try? context.fetch(descriptor).first { return found }
-        // Try by English key
-        let descEn = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyEn == normalized })
+        // Try by normalized English key (language-neutral canonical bridge).
+        // Compares normalized-to-normalized so multi-word names match consistently
+        // (fixes the old bug where a normalized query was compared to a raw keyEn).
+        let descEn = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyEnNormalized == normalized })
         return try? context.fetch(descEn).first
     }
 
     func saveToCache(keyOriginal: String, keyEn: String, nutrientsPer100g: NutrientData) {
         let normalized = normalizeKey(keyOriginal)
+        let normalizedEn = normalizeKey(keyEn)
         // Check duplicates
         let desc1 = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyNormalized == normalized })
         if (try? context.fetch(desc1).first) != nil { return }
 
         if !keyOriginal.hasPrefix("barcode:") && !keyOriginal.hasPrefix("supplement:") {
-            let normalizedEn = normalizeKey(keyEn)
-            let desc2 = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyEn == normalizedEn })
+            let desc2 = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyEnNormalized == normalizedEn })
             if (try? context.fetch(desc2).first) != nil { return }
         }
 
         let json = encodeNutrients(nutrientsPer100g)
-        let entry = FoodCache(keyOriginal: keyOriginal, keyNormalized: normalized, keyEn: keyEn, nutrientsPer100gJson: json)
+        let entry = FoodCache(keyOriginal: keyOriginal, keyNormalized: normalized, keyEn: keyEn, keyEnNormalized: normalizedEn, nutrientsPer100gJson: json)
         context.insert(entry)
         try? context.save()
     }
@@ -207,7 +211,19 @@ class DatabaseManager {
         entry.keyOriginal = nameRu
         entry.keyNormalized = normalizeKey(nameRu)
         entry.keyEn = nameEn
+        entry.keyEnNormalized = normalizeKey(nameEn)
         entry.nutrientsPer100gJson = encodeNutrients(nutrients)
+        try? context.save()
+    }
+
+    /// One-time backfill of `keyEnNormalized` for cache rows created before the
+    /// language-neutral key was introduced. Cheap no-op once all rows are filled.
+    func backfillKeyEnNormalizedIfNeeded() {
+        let descriptor = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyEnNormalized.isEmpty })
+        guard let stale = try? context.fetch(descriptor), !stale.isEmpty else { return }
+        for row in stale {
+            row.keyEnNormalized = normalizeKey(row.keyEn)
+        }
         try? context.save()
     }
 

@@ -32,31 +32,56 @@ struct EditProfileScreen: View {
 private struct ProfileDataTab: View {
     @ObservedObject var viewModel: MainViewModel
     let dismiss: DismissAction
-    @State private var gender: String = "Мужской"
+    @State private var gender: Gender = .male
     @State private var age: String = ""
-    @State private var weight: String = ""
-    @State private var height: String = ""
+    @State private var weight: String = ""       // kg (metric) or lb (imperial)
+    @State private var heightCm: String = ""     // cm, metric mode
+    @State private var heightFeet: String = ""   // ft, imperial mode
+    @State private var heightInches: String = "" // in, imperial mode
     @State private var goals: String = ""
     @State private var localError: String?
+    @State private var unitSystem: UnitSystem = UnitSystem.current
+
+    private var isImperial: Bool { unitSystem == .imperial }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
                 VStack(alignment: .leading) {
+                    Text("Язык приложения").font(.headline)
+                    LanguagePickerButton()
+                }
+
+                VStack(alignment: .leading) {
+                    Text("Единицы измерения").font(.headline)
+                    Picker("Единицы измерения", selection: $unitSystem) {
+                        Text("Метрические (г)").tag(UnitSystem.metric)
+                        Text("Имперские (oz)").tag(UnitSystem.imperial)
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: unitSystem) { _, newValue in
+                        UnitSystem.current = newValue
+                        // Reinterpret the currently-entered values into the new unit
+                        // so the fields stay consistent when the user toggles.
+                        repopulateFieldsForUnitChange(to: newValue)
+                    }
+                }
+
+                VStack(alignment: .leading) {
                     Text("Пол").font(.headline)
                     HStack(spacing: 20) {
-                        Button(action: { gender = "Мужской" }) {
+                        Button(action: { gender = .male }) {
                             HStack(spacing: 6) {
-                                Image(systemName: gender == "Мужской" ? "largecircle.fill.circle" : "circle")
-                                    .foregroundColor(gender == "Мужской" ? .blue : .gray)
+                                Image(systemName: gender == .male ? "largecircle.fill.circle" : "circle")
+                                    .foregroundColor(gender == .male ? .blue : .gray)
                                 Text("Мужской")
                             }
                         }
                         .buttonStyle(.plain)
-                        Button(action: { gender = "Женский" }) {
+                        Button(action: { gender = .female }) {
                             HStack(spacing: 6) {
-                                Image(systemName: gender == "Женский" ? "largecircle.fill.circle" : "circle")
-                                    .foregroundColor(gender == "Женский" ? .blue : .gray)
+                                Image(systemName: gender == .female ? "largecircle.fill.circle" : "circle")
+                                    .foregroundColor(gender == .female ? .blue : .gray)
                                 Text("Женский")
                             }
                         }
@@ -72,17 +97,28 @@ private struct ProfileDataTab: View {
                 }
 
                 VStack(alignment: .leading) {
-                    Text("Вес (кг)").font(.headline)
+                    Text(isImperial ? "Вес (фунты)" : "Вес (кг)").font(.headline)
                     TextField("Вес", text: $weight)
                         .textFieldStyle(.roundedBorder)
                         .keyboardType(.decimalPad)
                 }
 
                 VStack(alignment: .leading) {
-                    Text("Рост (см)").font(.headline)
-                    TextField("Рост", text: $height)
-                        .textFieldStyle(.roundedBorder)
-                        .keyboardType(.decimalPad)
+                    Text(isImperial ? "Рост (футы/дюймы)" : "Рост (см)").font(.headline)
+                    if isImperial {
+                        HStack {
+                            TextField("Футы", text: $heightFeet)
+                                .textFieldStyle(.roundedBorder)
+                                .keyboardType(.numberPad)
+                            TextField("Дюймы", text: $heightInches)
+                                .textFieldStyle(.roundedBorder)
+                                .keyboardType(.numberPad)
+                        }
+                    } else {
+                        TextField("Рост", text: $heightCm)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(.decimalPad)
+                    }
                 }
 
                 VStack(alignment: .leading) {
@@ -115,26 +151,68 @@ private struct ProfileDataTab: View {
         }
         .onAppear {
             if let profile = viewModel.userProfile {
-                gender = profile.gender
+                gender = Gender.from(stored: profile.gender)
                 age = String(profile.age)
-                weight = String(Int(profile.weightKg))
-                height = String(Int(profile.heightCm))
                 goals = profile.goalsText
+                fillBodyFields(weightKg: profile.weightKg, heightCm: profile.heightCm, unit: unitSystem)
             }
         }
     }
 
+    /// Populate the weight/height text fields from canonical kg/cm in the given unit.
+    private func fillBodyFields(weightKg: Double, heightCm cm: Double, unit: UnitSystem) {
+        if unit == .imperial {
+            weight = String(Int(BodyUnits.kgToPounds(weightKg).rounded()))
+            let (ft, inch) = BodyUnits.cmToFeetInches(cm)
+            heightFeet = String(ft)
+            heightInches = String(inch)
+        } else {
+            weight = String(Int(weightKg.rounded()))
+            heightCm = String(Int(cm.rounded()))
+        }
+    }
+
+    /// When the user flips the unit toggle, convert whatever is currently entered
+    /// into the new unit so the displayed values keep the same real measurement.
+    private func repopulateFieldsForUnitChange(to newUnit: UnitSystem) {
+        // Interpret current fields in the OLD unit → canonical kg/cm.
+        let oldUnit: UnitSystem = (newUnit == .imperial) ? .metric : .imperial
+        let (kg, cm) = currentBodyInCanonical(assuming: oldUnit)
+        guard let kg, let cm else { return }  // leave as-is if input incomplete
+        fillBodyFields(weightKg: kg, heightCm: cm, unit: newUnit)
+    }
+
+    /// Read the current text fields, interpreting them in `unit`, returning kg/cm.
+    private func currentBodyInCanonical(assuming unit: UnitSystem) -> (Double?, Double?) {
+        let w = Double(weight.replacingOccurrences(of: ",", with: "."))
+        if unit == .imperial {
+            let ft = Double(heightFeet.replacingOccurrences(of: ",", with: "."))
+            let inch = Double(heightInches.isEmpty ? "0" : heightInches.replacingOccurrences(of: ",", with: "."))
+            let kg = w.map { BodyUnits.poundsToKg($0) }
+            let cm = (ft != nil) ? BodyUnits.feetInchesToCm(feet: ft!, inches: inch ?? 0) : nil
+            return (kg, cm)
+        } else {
+            let cm = Double(heightCm.replacingOccurrences(of: ",", with: "."))
+            return (w, cm)
+        }
+    }
+
     private func submit() {
-        guard let a = Int(age), let w = Double(weight), let h = Double(height) else {
-            localError = "Введите корректные возраст, вес и рост"
+        guard let a = Int(age) else {
+            localError = String(localized: "Введите корректные возраст, вес и рост")
+            return
+        }
+        let (weightKg, heightCmValue) = currentBodyInCanonical(assuming: unitSystem)
+        guard let weightKg, let heightCmValue else {
+            localError = String(localized: "Введите корректные возраст, вес и рост")
             return
         }
         if goals.trimmingCharacters(in: .whitespaces).isEmpty {
-            localError = "Опишите ваши цели"
+            localError = String(localized: "Опишите ваши цели")
             return
         }
         localError = nil
-        viewModel.updateProfile(gender: gender, age: a, weight: w, height: h, goals: goals) {
+        viewModel.updateProfile(gender: gender.rawValue, age: a, weight: weightKg, height: heightCmValue, goals: goals) {
             dismiss()
         }
     }
@@ -201,9 +279,9 @@ private struct DailyNormsTab: View {
                         }
                     }
 
-                    normsSection(title: "БЖУ и Калории", items: macroKeys)
-                    normsSection(title: "Витамины", items: vitaminKeys)
-                    normsSection(title: "Минералы и микроэлементы", items: mineralKeys)
+                    normsSection(title: String(localized: "БЖУ и Калории"), items: macroKeys)
+                    normsSection(title: String(localized: "Витамины"), items: vitaminKeys)
+                    normsSection(title: String(localized: "Минералы и микроэлементы"), items: mineralKeys)
                 }
                 .padding()
             }

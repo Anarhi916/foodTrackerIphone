@@ -2,16 +2,27 @@ import SwiftUI
 
 struct OnboardingScreen: View {
     @ObservedObject var viewModel: MainViewModel
-    @State private var gender: String = "Мужской"
+    @State private var gender: Gender = .male
     @State private var age: String = ""
-    @State private var weight: String = ""
-    @State private var height: String = ""
+    @State private var weight: String = ""       // kg (metric) or lb (imperial)
+    @State private var heightCm: String = ""     // cm, used in metric mode
+    @State private var heightFeet: String = ""   // ft, imperial mode
+    @State private var heightInches: String = "" // in, imperial mode
     @State private var goals: String = ""
     @State private var localError: String?
+    @State private var unitSystem: UnitSystem = UnitSystem.current
+
+    private var isImperial: Bool { unitSystem == .imperial }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                // Language — top of onboarding so users can switch before filling in data.
+                HStack {
+                    Spacer()
+                    LanguagePickerButton()
+                }
+
                 Text("Настройка профиля")
                     .font(.largeTitle)
                     .bold()
@@ -25,10 +36,23 @@ struct OnboardingScreen: View {
                 VStack(alignment: .leading) {
                     Text("Пол").font(.headline)
                     Picker("Пол", selection: $gender) {
-                        Text("Мужской").tag("Мужской")
-                        Text("Женский").tag("Женский")
+                        Text("Мужской").tag(Gender.male)
+                        Text("Женский").tag(Gender.female)
                     }
                     .pickerStyle(.segmented)
+                }
+
+                // Units
+                VStack(alignment: .leading) {
+                    Text("Единицы измерения").font(.headline)
+                    Picker("Единицы измерения", selection: $unitSystem) {
+                        Text("Метрические (г)").tag(UnitSystem.metric)
+                        Text("Имперские (oz)").tag(UnitSystem.imperial)
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: unitSystem) { _, newValue in
+                        UnitSystem.current = newValue
+                    }
                 }
 
                 // Age
@@ -41,7 +65,7 @@ struct OnboardingScreen: View {
 
                 // Weight
                 VStack(alignment: .leading) {
-                    Text("Вес (кг)").font(.headline)
+                    Text(isImperial ? "Вес (фунты)" : "Вес (кг)").font(.headline)
                     TextField("Вес", text: $weight)
                         .textFieldStyle(.roundedBorder)
                         .keyboardType(.decimalPad)
@@ -49,10 +73,21 @@ struct OnboardingScreen: View {
 
                 // Height
                 VStack(alignment: .leading) {
-                    Text("Рост (см)").font(.headline)
-                    TextField("Рост", text: $height)
-                        .textFieldStyle(.roundedBorder)
-                        .keyboardType(.decimalPad)
+                    Text(isImperial ? "Рост (футы/дюймы)" : "Рост (см)").font(.headline)
+                    if isImperial {
+                        HStack {
+                            TextField("Футы", text: $heightFeet)
+                                .textFieldStyle(.roundedBorder)
+                                .keyboardType(.numberPad)
+                            TextField("Дюймы", text: $heightInches)
+                                .textFieldStyle(.roundedBorder)
+                                .keyboardType(.numberPad)
+                        }
+                    } else {
+                        TextField("Рост", text: $heightCm)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(.decimalPad)
+                    }
                 }
 
                 // Goals
@@ -87,16 +122,37 @@ struct OnboardingScreen: View {
     }
 
     private func submit() {
-        guard let a = Int(age), let w = Double(weight), let h = Double(height) else {
-            localError = "Введите корректные возраст, вес и рост"
+        // Parse weight/height honoring the selected unit system, converting to
+        // the canonical kg / cm the profile stores.
+        guard let a = Int(age),
+              let rawWeight = Double(weight.replacingOccurrences(of: ",", with: ".")) else {
+            localError = String(localized: "Введите корректные возраст, вес и рост")
             return
         }
+        let weightKg: Double
+        let heightCmValue: Double
+        if isImperial {
+            guard let ft = Double(heightFeet.replacingOccurrences(of: ",", with: ".")),
+                  let inch = Double(heightInches.isEmpty ? "0" : heightInches.replacingOccurrences(of: ",", with: ".")) else {
+                localError = String(localized: "Введите корректные возраст, вес и рост")
+                return
+            }
+            weightKg = BodyUnits.poundsToKg(rawWeight)
+            heightCmValue = BodyUnits.feetInchesToCm(feet: ft, inches: inch)
+        } else {
+            guard let h = Double(heightCm.replacingOccurrences(of: ",", with: ".")) else {
+                localError = String(localized: "Введите корректные возраст, вес и рост")
+                return
+            }
+            weightKg = rawWeight
+            heightCmValue = h
+        }
         if goals.trimmingCharacters(in: .whitespaces).isEmpty {
-            localError = "Опишите ваши цели"
+            localError = String(localized: "Опишите ваши цели")
             return
         }
         localError = nil
-        viewModel.updateProfile(gender: gender, age: a, weight: w, height: h, goals: goals) {
+        viewModel.updateProfile(gender: gender.rawValue, age: a, weight: weightKg, height: heightCmValue, goals: goals) {
             // Profile saved, app will navigate to main
         }
     }

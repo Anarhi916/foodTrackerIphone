@@ -36,11 +36,12 @@ class NutritionRepository {
     }
 
     func calculateAndSaveNorms(gender: String, age: Int, weight: Double, height: Double, goals: String) async throws -> NutrientData {
+        let genderForPrompt = Gender.from(stored: gender).promptValue
         let prompt = """
 You are a professional nutrition expert. Based on the following user data, calculate the recommended DAILY nutritional intake to achieve their goals.
 
 User data:
-- Gender: \(gender)
+- Gender: \(genderForPrompt)
 - Age: \(age) years
 - Weight: \(weight) kg
 - Height: \(height) cm
@@ -81,8 +82,8 @@ Calculate daily norms and return ONLY a JSON object with this EXACT structure (a
     func getRecentDates() -> [String] { db.getRecentDates() }
     func getAllDates() -> [String] { db.getAllDates() }
 
-    func addFoodEntry(foodName: String, weightGrams: Double, nutrients: NutrientData, source: String = "manual", fromCache: Bool = false) {
-        db.addFoodEntry(date: todayDate(), foodName: foodName, weightGrams: weightGrams, nutrients: nutrients, source: source, fromCache: fromCache)
+    func addFoodEntry(foodName: String, foodNameEn: String = "", weightGrams: Double, nutrients: NutrientData, source: String = "manual", fromCache: Bool = false) {
+        db.addFoodEntry(date: todayDate(), foodName: foodName, foodNameEn: foodNameEn, weightGrams: weightGrams, nutrients: nutrients, source: source, fromCache: fromCache)
     }
 
     func updateFoodEntryWeight(_ entry: FoodEntry, newWeight: Double) {
@@ -208,7 +209,7 @@ Calculate daily norms and return ONLY a JSON object with this EXACT structure (a
 
             for id in identities {
                 let rawName = id.foodName.isEmpty ? descriptionForAi : id.foodName
-                let nameRu = rawName.replacingOccurrences(of: "\\s*\\d+(?:[.,]\\d+)?\\s*(г|гр|грамм|g|ml|мл|кг|kg)\\b", with: "", options: .regularExpression).trimmingCharacters(in: .whitespaces)
+                let nameRu = WeightParser.parse(rawName).name
                 let nameEn = id.foodNameEn.isEmpty ? id.foodName : id.foodNameEn
                 let weight = id.weightGrams > 0 ? id.weightGrams : 100.0
 
@@ -232,7 +233,7 @@ Calculate daily norms and return ONLY a JSON object with this EXACT structure (a
                 // For dairy with explicit % fat (e.g. "творог 5%"), strip the percent
                 // from the English query — USDA doesn't index RU/UA fat grades, so we
                 // search for the base product and later correct macros via AI.
-                let isDairyWithPercent = isDairyWithFatPercent(item.foodNameRu)
+                let isDairyWithPercent = isDairyWithFatPercent(item.foodNameRu, englishName: item.foodNameEn)
                 let foodNameEnForSearch: String = {
                     var name = isDairyWithPercent ? stripFatPercent(from: item.foodNameEn) : item.foodNameEn
                     // Normalise British English → American English so USDA finds the right entry
@@ -404,7 +405,7 @@ Calculate daily norms and return ONLY a JSON object with this EXACT structure (a
                 // For dairy with explicit %, override macros via AI using GOST reference data
                 // (USDA gave us micronutrients for the base product, but macros for the wrong fat grade).
                 if let per100g = aiPending[i].nutrientsPer100g,
-                   isDairyWithFatPercent(aiPending[i].foodNameRu) {
+                   isDairyWithFatPercent(aiPending[i].foodNameRu, englishName: aiPending[i].foodNameEn) {
                     aiPending[i].nutrientsPer100g = await correctDairyMacrosWithAI(per100g, foodNameRu: aiPending[i].foodNameRu)
                 }
                 // Cache
@@ -461,7 +462,7 @@ Return ONLY a JSON object with these fields:
         let map = try parseJSONMap(json)
         let nameEn = (map["food_name_en"] as? String) ?? dishName
         var per100g = nutrientDataFromMap(map)
-        if isDairyWithFatPercent(dishName) {
+        if isDairyWithFatPercent(dishName, englishName: nameEn) {
             per100g = await correctDairyMacrosWithAI(per100g, foodNameRu: dishName)
         }
 
@@ -475,14 +476,15 @@ Return ONLY a JSON object with these fields:
 
     func identifyAndAnalyzeFoodFromPhoto(_ imageData: Data) async throws -> FoodAnalysisResult {
         let base64 = imageData.base64EncodedString()
+        let uiLang = AppLocale.languageEnglishName
         let prompt = """
 You are a professional nutritionist. Look at this food photo and:
-1. Identify the dish/food name IN RUSSIAN (detailed, including ingredients)
+1. Identify the dish/food name IN \(uiLang.uppercased()) (detailed, including ingredients)
 2. Estimate total portion weight in grams
 3. Provide nutritional values PER 100 GRAMS for this complete dish
 
 Return ONLY a JSON object:
-{"food_name": "<название на русском>", "food_name_en": "<English translation>", "weight_grams": <number>, "calories": <kcal>, "protein": <g>, "fat": <g>, "saturated_fat": <g>, "monounsaturated_fat": <g>, "polyunsaturated_fat": <g>, "cholesterol": <mg>, "carbs": <g>, "fiber": <g>, "vitamin_a": <mcg>, "vitamin_b1": <mg>, "vitamin_b2": <mg>, "vitamin_b3": <mg>, "vitamin_b5": <mg>, "vitamin_b6": <mg>, "vitamin_b7": <mcg>, "vitamin_b9": <mcg>, "vitamin_b12": <mcg>, "vitamin_c": <mg>, "vitamin_d": <mcg>, "vitamin_e": <mg>, "vitamin_k": <mcg>, "calcium": <mg>, "iron": <mg>, "magnesium": <mg>, "phosphorus": <mg>, "potassium": <mg>, "sodium": <mg>, "zinc": <mg>, "copper": <mg>, "manganese": <mg>, "selenium": <mcg>, "iodine": <mcg>}
+{"food_name": "<dish name in \(uiLang)>", "food_name_en": "<English translation>", "weight_grams": <number>, "calories": <kcal>, "protein": <g>, "fat": <g>, "saturated_fat": <g>, "monounsaturated_fat": <g>, "polyunsaturated_fat": <g>, "cholesterol": <mg>, "carbs": <g>, "fiber": <g>, "vitamin_a": <mcg>, "vitamin_b1": <mg>, "vitamin_b2": <mg>, "vitamin_b3": <mg>, "vitamin_b5": <mg>, "vitamin_b6": <mg>, "vitamin_b7": <mcg>, "vitamin_b9": <mcg>, "vitamin_b12": <mcg>, "vitamin_c": <mg>, "vitamin_d": <mcg>, "vitamin_e": <mg>, "vitamin_k": <mcg>, "calcium": <mg>, "iron": <mg>, "magnesium": <mg>, "phosphorus": <mg>, "potassium": <mg>, "sodium": <mg>, "zinc": <mg>, "copper": <mg>, "manganese": <mg>, "selenium": <mcg>, "iodine": <mcg>}
 """
         let contentParts: [OpenRouterContentPart] = [
             OpenRouterContentPart(type: "text", text: prompt, imageUrl: nil),
@@ -493,7 +495,7 @@ Return ONLY a JSON object:
         let json = extractJSON(from: text)
         let map = try parseJSONMap(json)
 
-        let foodName = (map["food_name"] as? String) ?? "Блюдо"
+        let foodName = (map["food_name"] as? String) ?? String(localized: "Блюдо")
         let nameEn = (map["food_name_en"] as? String) ?? foodName
         let weightGrams = (map["weight_grams"] as? NSNumber)?.doubleValue ?? 200.0
         let per100g = nutrientDataFromMap(map)
@@ -518,7 +520,7 @@ Return ONLY a JSON object:
         guard let product = response.product else { return nil }
         let name = [product.productNameRu, product.productNameUk, product.productNameEn, product.productName, product.brands]
             .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
-            .first(where: { !$0.isEmpty }) ?? "Неизвестный продукт"
+            .first(where: { !$0.isEmpty }) ?? String(localized: "Неизвестный продукт")
         let n = product.nutriments
 
         var per100g = NutrientData(
@@ -613,15 +615,15 @@ Return ONLY JSON, e.g.: {"vitamin_a": 45, "calcium": 11}
             let nutrients = db.parseNutrients(cached.nutrientsPer100gJson) ?? NutrientData()
             let servingSize = cached.keyOriginal
                 .replacingOccurrences(of: "supplement:\(barcode):", with: "")
-            return SupplementResult(name: cached.keyEn, nutrientsPerServing: nutrients, servingSize: servingSize.isEmpty ? "1 порция" : servingSize, fromCache: true)
+            return SupplementResult(name: cached.keyEn, nutrientsPerServing: nutrients, servingSize: servingSize.isEmpty ? String(localized: "1 порция") : servingSize, fromCache: true)
         }
 
         let response = try await network.lookupBarcode(barcode)
         guard let product = response.product else { return nil }
         let name = [product.productNameRu, product.productNameUk, product.productNameEn, product.productName, product.brands]
             .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
-            .first(where: { !$0.isEmpty }) ?? "Dietary supplement"
-        let servingSize = product.servingSize ?? "1 порция"
+            .first(where: { !$0.isEmpty }) ?? String(localized: "Пищевая добавка")
+        let servingSize = product.servingSize ?? String(localized: "1 порция")
 
         let perServing = try await getSupplementNutrientsFromAI(name: name, servingSize: servingSize, barcode: barcode)
 
@@ -1066,19 +1068,22 @@ Return ONLY a JSON array of English strings:
     private let dairyWithFatPercentKeywords: [String] = [
         "творог", "творожн", "сирок", "сырок", "сир знежирен", "сир нежирн", "сир кисломолочн",
         "молоко", "сметана", "кефир", "ряженка", "ряжанка", "йогурт", "сливки", "вершки",
-        "простокваша", "ацидофилин", "айран", "тан", "мацони", "снежок", "бифидок"
+        "простокваша", "ацидофилин", "айран", "тан", "мацони", "снежок", "бифидок",
+        // English/other-language equivalents so the ГОСТ correction fires regardless of UI language
+        "cottage cheese", "quark", "curd", "milk", "sour cream", "kefir",
+        "ryazhenka", "yogurt", "yoghurt", "cream", "buttermilk"
     ]
 
     /// true если в названии явно указан % жирности dairy-продукта по ГОСТ.
-    /// Твёрдые сыры исключаются.
-    private func isDairyWithFatPercent(_ foodName: String) -> Bool {
-        let lower = foodName.lowercased()
+    /// Твёрдые сыры исключаются. Проверяет и локализованное имя, и английское.
+    private func isDairyWithFatPercent(_ foodName: String, englishName: String? = nil) -> Bool {
+        let lower = (foodName + " " + (englishName ?? "")).lowercased()
         let isHardCheese = (lower.contains("сыр") || lower.contains("сир") ||
                             (lower.contains("cheese") && !lower.contains("cottage")))
                            && !dairyWithFatPercentKeywords.contains(where: { lower.contains($0) })
         if isHardCheese { return false }
         guard dairyWithFatPercentKeywords.contains(where: { lower.contains($0) }) else { return false }
-        return extractFatPercent(from: foodName) != nil
+        return extractFatPercent(from: foodName) != nil || extractFatPercent(from: englishName ?? "") != nil
     }
 
     /// Извлекает указанный % жирности из названия продукта (0..100).
@@ -1177,24 +1182,8 @@ The fat value MUST equal \(percent). Calories MUST satisfy: protein*4 + fat*9 + 
     private func parseLocalFoodInput(_ input: String) -> [(String, Double)] {
         let items = input.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         return items.map { item in
-            let pattern = #"(\d+(?:[.,]\d+)?)\s*(г|гр|грамм|g|ml|мл|кг|kg)\b"#
-            let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
-            let range = NSRange(item.startIndex..., in: item)
-            var weight = 0.0
-            var name = item
-            if let match = regex?.firstMatch(in: item, range: range) {
-                if let wRange = Range(match.range(at: 1), in: item),
-                   let uRange = Range(match.range(at: 2), in: item) {
-                    let wStr = String(item[wRange]).replacingOccurrences(of: ",", with: ".")
-                    weight = Double(wStr) ?? 0
-                    let unit = String(item[uRange]).lowercased()
-                    if unit == "кг" || unit == "kg" { weight *= 1000 }
-                    if let fullRange = Range(match.range, in: item) {
-                        name = item.replacingCharacters(in: fullRange, with: "").trimmingCharacters(in: .whitespaces)
-                    }
-                }
-            }
-            return (name, weight)
+            let parsed = WeightParser.parse(item)
+            return (parsed.name, parsed.grams)
         }.filter { !$0.0.isEmpty }
     }
 
@@ -1334,12 +1323,13 @@ The fat value MUST equal \(percent). Calories MUST satisfy: protein*4 + fat*9 + 
     // MARK: - Prompt Builders
 
     private func buildIdentifyPrompt(description: String) -> String {
-        """
-Определи ВСЕ продукты и их вес из описания. Описание может быть на русском, украинском или другом языке.
+        let uiLang = AppLocale.languageEnglishName
+        return """
+Определи ВСЕ продукты и их вес из описания. Описание может быть на любом языке.
 Если указано количество штук — рассчитай общий вес. Если вес не указан — оцени типичную порцию.
 
 ВАЖНО:
-- food_name — сохрани название НА ЯЗЫКЕ ВВОДА (не переводи на другой язык)
+- food_name — название продукта на языке "\(uiLang)" (this is the app's UI language; translate the product name into \(uiLang) so it displays consistently)
 - food_name_en — ТОЧНЫЙ перевод на английский для поиска в USDA базе данных
 
 Примеры правильного перевода:
@@ -1440,7 +1430,7 @@ The fat value MUST equal \(percent). Calories MUST satisfy: protein*4 + fat*9 + 
 Описание: \(description)
 
 Верни ТОЛЬКО JSON массив (даже если продукт один):
-[{"food_name": "<название НА ЯЗЫКЕ ВВОДА>", "food_name_en": "<EXACT English translation for USDA search>", "weight_grams": <число>}]
+[{"food_name": "<product name in the app UI language>", "food_name_en": "<EXACT English translation for USDA search>", "weight_grams": <число>}]
 """
     }
 

@@ -586,4 +586,25 @@ struct NutrientTopFoods {
             FoodSource(name: "Кукуруза", per100g: 5.0),
         ]),
     ]
+
+    /// Localized display name for a food source. Data stores Russian names as
+    /// canonical keys; this resolves them to the current UI language via
+    /// `foodNameTranslations` (see NutrientTopFoodsL10n.swift). Falls back to
+    /// the Russian name when no translation exists.
+    static func localizedName(_ russianName: String) -> String {
+        let code = AppLocale.languageCode
+        if code == "ru" { return russianName }
+        return foodNameTranslations[russianName]?[code] ?? russianName
+    }
+
+    /// Localized short unit label ("ккал"/"г"/"мг"/"мкг") via the string catalog.
+    static func localizedUnit(_ russianUnit: String) -> String {
+        switch russianUnit {
+        case "ккал": return String(localized: "ккал")
+        case "г": return String(localized: "г")
+        case "мг": return String(localized: "мг")
+        case "мкг": return String(localized: "мкг")
+        default: return russianUnit
+        }
+    }
 }

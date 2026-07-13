@@ -5,6 +5,11 @@ options:
     iOS: "17.0"
   xcodeVersion: "15.0"
   createIntermediateGroups: true
+  developmentLanguage: ru
+settings:
+  base:
+    SWIFT_EMIT_LOC_STRINGS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
 targets:
   NutritionTracker:
     type: application

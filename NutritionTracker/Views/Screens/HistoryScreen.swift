@@ -60,10 +60,10 @@ struct HistoryScreen: View {
 
                     // Summary chips
                     HStack(spacing: 8) {
-                        summaryChip("Ккал", value: String(format: "%.0f", totals.calories))
-                        summaryChip("Б", value: String(format: "%.1f г", totals.protein))
-                        summaryChip("Ж", value: String(format: "%.1f г", totals.fat))
-                        summaryChip("У", value: String(format: "%.1f г", totals.carbs))
+                        summaryChip(String(localized: "Ккал"), value: String(format: "%.0f", totals.calories))
+                        summaryChip(String(localized: "Б"), value: String(format: "%.1f %@", totals.protein, String(localized: "г")))
+                        summaryChip(String(localized: "Ж"), value: String(format: "%.1f %@", totals.fat, String(localized: "г")))
+                        summaryChip(String(localized: "У"), value: String(format: "%.1f %@", totals.carbs, String(localized: "г")))
                     }
 
                     // Entry list
@@ -72,8 +72,8 @@ struct HistoryScreen: View {
                         HStack {
                             Text(entry.foodName).font(.caption).lineLimit(2)
                             Spacer()
-                            Text("\(Int(entry.weightGrams))г").font(.caption2).foregroundColor(.secondary)
-                            Text("\(Int(nutrients.calories)) ккал").font(.caption2)
+                            Text(WeightFormat.short(grams: entry.weightGrams)).font(.caption2).foregroundColor(.secondary)
+                            Text("\(Int(nutrients.calories)) \(String(localized: "ккал"))").font(.caption2)
                         }
                     }
 
@@ -81,14 +81,14 @@ struct HistoryScreen: View {
                     if let norms = viewModel.dailyNorms {
                         Divider()
                         let bars: [(name: String, value: Double, target: Double, unit: String, upperRatio: Double)] = [
-                            ("Калории", totals.calories, norms.calories, "ккал", 1.5),
-                            ("Белки", totals.protein, norms.protein, "г", 1.5),
-                            ("Жиры", totals.fat, norms.fat, "г", 1.5),
-                            ("Углеводы", totals.carbs, norms.carbs, "г", 1.5),
-                            ("Насыщ. жиры", totals.saturatedFat, norms.saturatedFat, "г", 1.0),
-                            ("Мононенасыщ.", totals.monounsaturatedFat, norms.monounsaturatedFat, "г", 3.0),
-                            ("Полиненасыщ.", totals.polyunsaturatedFat, norms.polyunsaturatedFat, "г", 3.0),
-                            ("Холестерин", totals.cholesterol, norms.cholesterol, "мг", 1.3)
+                            (String(localized: "Калории"), totals.calories, norms.calories, String(localized: "ккал"), 1.5),
+                            (String(localized: "Белки"), totals.protein, norms.protein, String(localized: "г"), 1.5),
+                            (String(localized: "Жиры"), totals.fat, norms.fat, String(localized: "г"), 1.5),
+                            (String(localized: "Углеводы"), totals.carbs, norms.carbs, String(localized: "г"), 1.5),
+                            (String(localized: "Насыщ. жиры"), totals.saturatedFat, norms.saturatedFat, String(localized: "г"), 1.0),
+                            (String(localized: "Мононенасыщ."), totals.monounsaturatedFat, norms.monounsaturatedFat, String(localized: "г"), 3.0),
+                            (String(localized: "Полиненасыщ."), totals.polyunsaturatedFat, norms.polyunsaturatedFat, String(localized: "г"), 3.0),
+                            (String(localized: "Холестерин"), totals.cholesterol, norms.cholesterol, String(localized: "мг"), 1.3)
                         ]
                         ForEach(bars, id: \.name) { bar in
                             historyProgressBar(name: bar.name, value: bar.value, target: bar.target, unit: bar.unit, upperRatio: bar.upperRatio)
@@ -140,15 +140,17 @@ struct HistoryScreen: View {
 
     private func formatDate(_ dateStr: String) -> String {
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
         guard let date = formatter.date(from: dateStr) else { return dateStr }
 
         let calendar = Calendar.current
-        if calendar.isDateInToday(date) { return "Сегодня" }
-        if calendar.isDateInYesterday(date) { return "Вчера" }
+        if calendar.isDateInToday(date) { return String(localized: "Сегодня") }
+        if calendar.isDateInYesterday(date) { return String(localized: "Вчера") }
 
         let display = DateFormatter()
-        display.dateFormat = "dd.MM.yyyy"
+        display.locale = .current
+        display.setLocalizedDateFormatFromTemplate("ddMMyyyy")
         return display.string(from: date)
     }
 }

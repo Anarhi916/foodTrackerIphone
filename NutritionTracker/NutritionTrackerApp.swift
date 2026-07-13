@@ -4,11 +4,15 @@ import SwiftData
 @main
 struct NutritionTrackerApp: App {
     @StateObject private var viewModel = MainViewModel()
+    @StateObject private var localization = LocalizationManager.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(viewModel)
+                .environmentObject(localization)
+                .environment(\.locale, localization.locale)
+                .id(localization.language)   // rebuild the whole tree on language change
                 .modelContainer(DatabaseManager.shared.container)
                 .onOpenURL { url in
                     // Deep link path: HTTPS or custom-scheme URL → import shared food.

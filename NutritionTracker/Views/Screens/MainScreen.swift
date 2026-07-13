@@ -122,7 +122,7 @@ struct MainScreen: View {
                 let nutrients = viewModel.parseNutrients(entry.nutrientsPer100gJson)
                 let w = Double(quickAddWeight) ?? 100
                 let factor = w / 100.0
-                Text("\(entry.keyOriginal)\n\(String(format: "%.0f ккал • Б%.1f Ж%.1f У%.1f", nutrients.calories * factor, nutrients.protein * factor, nutrients.fat * factor, nutrients.carbs * factor))")
+                Text("\(entry.keyOriginal)\n\(String(format: String(localized: "%.0f ккал • Б%.1f Ж%.1f У%.1f"), nutrients.calories * factor, nutrients.protein * factor, nutrients.fat * factor, nutrients.carbs * factor))")
             }
         }
     }
@@ -181,7 +181,7 @@ struct MainScreen: View {
                                         .font(.subheadline)
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
-                                    Text(String(format: "%.0f ккал • Б%.1f Ж%.1f У%.1f /100г", nutrients.calories, nutrients.protein, nutrients.fat, nutrients.carbs))
+                                    Text(String(format: String(localized: "%.0f ккал • Б%.1f Ж%.1f У%.1f /100г"), nutrients.calories, nutrients.protein, nutrients.fat, nutrients.carbs))
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -448,7 +448,7 @@ struct MainScreen: View {
 
     private var vitaminsSection: some View {
         NutrientProgressSection(
-            title: "Витамины",
+            title: String(localized: "Витамины"),
             nutrients: viewModel.todayTotals.vitaminsList(),
             norms: viewModel.dailyNorms?.vitaminsList() ?? [],
             entries: viewModel.todayEntries,
@@ -459,7 +459,7 @@ struct MainScreen: View {
 
     private var mineralsSection: some View {
         NutrientProgressSection(
-            title: "Минералы",
+            title: String(localized: "Минералы"),
             nutrients: viewModel.todayTotals.mineralsList(),
             norms: viewModel.dailyNorms?.mineralsList() ?? [],
             entries: viewModel.todayEntries,
@@ -470,7 +470,7 @@ struct MainScreen: View {
 
     private var fatDetailsSection: some View {
         NutrientProgressSection(
-            title: "Жиры (детализация)",
+            title: String(localized: "Жиры (детализация)"),
             nutrients: viewModel.todayTotals.fatDetailsList(),
             norms: viewModel.dailyNorms?.fatDetailsList() ?? [],
             entries: viewModel.todayEntries,
@@ -499,11 +499,11 @@ struct MainScreen: View {
                             : food.nutrients
 
                         Divider()
-                        nutrientRow("Калории", String(format: "%.0f ккал", nutrients.calories))
-                        nutrientRow("Белки", String(format: "%.1f г", nutrients.protein))
-                        nutrientRow("Жиры", String(format: "%.1f г", nutrients.fat))
-                        nutrientRow("Углеводы", String(format: "%.1f г", nutrients.carbs))
-                        nutrientRow("Клетчатка", String(format: "%.1f г", nutrients.fiber))
+                        nutrientRow(String(localized: "Калории"), String(format: String(localized: "%.0f ккал"), nutrients.calories))
+                        nutrientRow(String(localized: "Белки"), String(format: String(localized: "%.1f г"), nutrients.protein))
+                        nutrientRow(String(localized: "Жиры"), String(format: String(localized: "%.1f г"), nutrients.fat))
+                        nutrientRow(String(localized: "Углеводы"), String(format: String(localized: "%.1f г"), nutrients.carbs))
+                        nutrientRow(String(localized: "Клетчатка"), String(format: String(localized: "%.1f г"), nutrients.fiber))
 
                         let fatDetails = nutrients.fatDetailsList().filter { $0.value > 0 }
                         if !fatDetails.isEmpty {

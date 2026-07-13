@@ -135,54 +135,54 @@ struct NutrientData: Codable, Equatable {
 
     func macrosList() -> [(key: String, name: String, value: Double)] {
         [
-            ("calories", "Калории (ккал)", calories),
-            ("protein", "Белки (г)", protein),
-            ("fat", "Жиры (г)", fat),
-            ("carbs", "Углеводы (г)", carbs),
-            ("fiber", "Клетчатка (г)", fiber)
+            ("calories", String(localized: "Калории (ккал)"), calories),
+            ("protein", String(localized: "Белки (г)"), protein),
+            ("fat", String(localized: "Жиры (г)"), fat),
+            ("carbs", String(localized: "Углеводы (г)"), carbs),
+            ("fiber", String(localized: "Клетчатка (г)"), fiber)
         ]
     }
 
     func fatDetailsList() -> [(key: String, name: String, value: Double)] {
         [
-            ("saturatedFat", "Насыщенные жиры (г)", saturatedFat),
-            ("monounsaturatedFat", "Мононенасыщенные жиры (г)", monounsaturatedFat),
-            ("polyunsaturatedFat", "Полиненасыщенные жиры (г)", polyunsaturatedFat),
-            ("cholesterol", "Холестерин (мг)", cholesterol)
+            ("saturatedFat", String(localized: "Насыщенные жиры (г)"), saturatedFat),
+            ("monounsaturatedFat", String(localized: "Мононенасыщенные жиры (г)"), monounsaturatedFat),
+            ("polyunsaturatedFat", String(localized: "Полиненасыщенные жиры (г)"), polyunsaturatedFat),
+            ("cholesterol", String(localized: "Холестерин (мг)"), cholesterol)
         ]
     }
 
     func vitaminsList() -> [(key: String, name: String, value: Double)] {
         [
-            ("vitaminA", "Витамин A (мкг)", vitaminA),
-            ("vitaminB1", "Витамин B1 (мг)", vitaminB1),
-            ("vitaminB2", "Витамин B2 (мг)", vitaminB2),
-            ("vitaminB3", "Витамин B3 (мг)", vitaminB3),
-            ("vitaminB5", "Витамин B5 (мг)", vitaminB5),
-            ("vitaminB6", "Витамин B6 (мг)", vitaminB6),
-            ("vitaminB7", "Витамин B7 (мкг)", vitaminB7),
-            ("vitaminB9", "Витамин B9 (мкг)", vitaminB9),
-            ("vitaminB12", "Витамин B12 (мкг)", vitaminB12),
-            ("vitaminC", "Витамин C (мг)", vitaminC),
-            ("vitaminD", "Витамин D (мкг)", vitaminD),
-            ("vitaminE", "Витамин E (мг)", vitaminE),
-            ("vitaminK", "Витамин K (мкг)", vitaminK)
+            ("vitaminA", String(localized: "Витамин A (мкг)"), vitaminA),
+            ("vitaminB1", String(localized: "Витамин B1 (мг)"), vitaminB1),
+            ("vitaminB2", String(localized: "Витамин B2 (мг)"), vitaminB2),
+            ("vitaminB3", String(localized: "Витамин B3 (мг)"), vitaminB3),
+            ("vitaminB5", String(localized: "Витамин B5 (мг)"), vitaminB5),
+            ("vitaminB6", String(localized: "Витамин B6 (мг)"), vitaminB6),
+            ("vitaminB7", String(localized: "Витамин B7 (мкг)"), vitaminB7),
+            ("vitaminB9", String(localized: "Витамин B9 (мкг)"), vitaminB9),
+            ("vitaminB12", String(localized: "Витамин B12 (мкг)"), vitaminB12),
+            ("vitaminC", String(localized: "Витамин C (мг)"), vitaminC),
+            ("vitaminD", String(localized: "Витамин D (мкг)"), vitaminD),
+            ("vitaminE", String(localized: "Витамин E (мг)"), vitaminE),
+            ("vitaminK", String(localized: "Витамин K (мкг)"), vitaminK)
         ]
     }
 
     func mineralsList() -> [(key: String, name: String, value: Double)] {
         [
-            ("calcium", "Кальций (мг)", calcium),
-            ("iron", "Железо (мг)", iron),
-            ("magnesium", "Магний (мг)", magnesium),
-            ("phosphorus", "Фосфор (мг)", phosphorus),
-            ("potassium", "Калий (мг)", potassium),
-            ("sodium", "Натрий (мг)", sodium),
-            ("zinc", "Цинк (мг)", zinc),
-            ("copper", "Медь (мг)", copper),
-            ("manganese", "Марганец (мг)", manganese),
-            ("selenium", "Селен (мкг)", selenium),
-            ("iodine", "Йод (мкг)", iodine)
+            ("calcium", String(localized: "Кальций (мг)"), calcium),
+            ("iron", String(localized: "Железо (мг)"), iron),
+            ("magnesium", String(localized: "Магний (мг)"), magnesium),
+            ("phosphorus", String(localized: "Фосфор (мг)"), phosphorus),
+            ("potassium", String(localized: "Калий (мг)"), potassium),
+            ("sodium", String(localized: "Натрий (мг)"), sodium),
+            ("zinc", String(localized: "Цинк (мг)"), zinc),
+            ("copper", String(localized: "Медь (мг)"), copper),
+            ("manganese", String(localized: "Марганец (мг)"), manganese),
+            ("selenium", String(localized: "Селен (мкг)"), selenium),
+            ("iodine", String(localized: "Йод (мкг)"), iodine)
         ]
     }
 
@@ -266,39 +266,39 @@ struct NutrientData: Codable, Equatable {
 
     func allNutrientsList() -> [(key: String, displayName: String, value: Double)] {
         [
-            ("calories", "Калории (ккал)", calories),
-            ("protein", "Белки (г)", protein),
-            ("fat", "Жиры (г)", fat),
-            ("saturatedFat", "Насыщенные жиры (г)", saturatedFat),
-            ("monounsaturatedFat", "Мононенасыщенные жиры (г)", monounsaturatedFat),
-            ("polyunsaturatedFat", "Полиненасыщенные жиры (г)", polyunsaturatedFat),
-            ("cholesterol", "Холестерин (мг)", cholesterol),
-            ("carbs", "Углеводы (г)", carbs),
-            ("fiber", "Клетчатка (г)", fiber),
-            ("vitaminA", "Витамин A (мкг)", vitaminA),
-            ("vitaminB1", "Витамин B1 (мг)", vitaminB1),
-            ("vitaminB2", "Витамин B2 (мг)", vitaminB2),
-            ("vitaminB3", "Витамин B3 (мг)", vitaminB3),
-            ("vitaminB5", "Витамин B5 (мг)", vitaminB5),
-            ("vitaminB6", "Витамин B6 (мг)", vitaminB6),
-            ("vitaminB7", "Витамин B7 (мкг)", vitaminB7),
-            ("vitaminB9", "Витамин B9 (мкг)", vitaminB9),
-            ("vitaminB12", "Витамин B12 (мкг)", vitaminB12),
-            ("vitaminC", "Витамин C (мг)", vitaminC),
-            ("vitaminD", "Витамин D (мкг)", vitaminD),
-            ("vitaminE", "Витамин E (мг)", vitaminE),
-            ("vitaminK", "Витамин K (мкг)", vitaminK),
-            ("calcium", "Кальций (мг)", calcium),
-            ("iron", "Железо (мг)", iron),
-            ("magnesium", "Магний (мг)", magnesium),
-            ("phosphorus", "Фосфор (мг)", phosphorus),
-            ("potassium", "Калий (мг)", potassium),
-            ("sodium", "Натрий (мг)", sodium),
-            ("zinc", "Цинк (мг)", zinc),
-            ("copper", "Медь (мг)", copper),
-            ("manganese", "Марганец (мг)", manganese),
-            ("selenium", "Селен (мкг)", selenium),
-            ("iodine", "Йод (мкг)", iodine)
+            ("calories", String(localized: "Калории (ккал)"), calories),
+            ("protein", String(localized: "Белки (г)"), protein),
+            ("fat", String(localized: "Жиры (г)"), fat),
+            ("saturatedFat", String(localized: "Насыщенные жиры (г)"), saturatedFat),
+            ("monounsaturatedFat", String(localized: "Мононенасыщенные жиры (г)"), monounsaturatedFat),
+            ("polyunsaturatedFat", String(localized: "Полиненасыщенные жиры (г)"), polyunsaturatedFat),
+            ("cholesterol", String(localized: "Холестерин (мг)"), cholesterol),
+            ("carbs", String(localized: "Углеводы (г)"), carbs),
+            ("fiber", String(localized: "Клетчатка (г)"), fiber),
+            ("vitaminA", String(localized: "Витамин A (мкг)"), vitaminA),
+            ("vitaminB1", String(localized: "Витамин B1 (мг)"), vitaminB1),
+            ("vitaminB2", String(localized: "Витамин B2 (мг)"), vitaminB2),
+            ("vitaminB3", String(localized: "Витамин B3 (мг)"), vitaminB3),
+            ("vitaminB5", String(localized: "Витамин B5 (мг)"), vitaminB5),
+            ("vitaminB6", String(localized: "Витамин B6 (мг)"), vitaminB6),
+            ("vitaminB7", String(localized: "Витамин B7 (мкг)"), vitaminB7),
+            ("vitaminB9", String(localized: "Витамин B9 (мкг)"), vitaminB9),
+            ("vitaminB12", String(localized: "Витамин B12 (мкг)"), vitaminB12),
+            ("vitaminC", String(localized: "Витамин C (мг)"), vitaminC),
+            ("vitaminD", String(localized: "Витамин D (мкг)"), vitaminD),
+            ("vitaminE", String(localized: "Витамин E (мг)"), vitaminE),
+            ("vitaminK", String(localized: "Витамин K (мкг)"), vitaminK),
+            ("calcium", String(localized: "Кальций (мг)"), calcium),
+            ("iron", String(localized: "Железо (мг)"), iron),
+            ("magnesium", String(localized: "Магний (мг)"), magnesium),
+            ("phosphorus", String(localized: "Фосфор (мг)"), phosphorus),
+            ("potassium", String(localized: "Калий (мг)"), potassium),
+            ("sodium", String(localized: "Натрий (мг)"), sodium),
+            ("zinc", String(localized: "Цинк (мг)"), zinc),
+            ("copper", String(localized: "Медь (мг)"), copper),
+            ("manganese", String(localized: "Марганец (мг)"), manganese),
+            ("selenium", String(localized: "Селен (мкг)"), selenium),
+            ("iodine", String(localized: "Йод (мкг)"), iodine)
         ]
     }
 }

@@ -204,7 +204,7 @@ struct NutrientBreakdownSheet: View {
                         VStack(spacing: 0) {
                             ForEach(Array(breakdown.enumerated()), id: \.offset) { _, item in
                                 HStack {
-                                    Text("\(item.name) (\(Int(item.weight))г)")
+                                    Text("\(item.name) (\(WeightFormat.short(grams: item.weight)))")
                                         .font(.callout)
                                         .lineLimit(2)
                                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -286,10 +286,10 @@ struct NutrientTopFoodsSheet: View {
                             ForEach(Array(sortedFoods.enumerated()), id: \.offset) { index, item in
                                 let pct = info.dailyValue > 0 ? Int(item.per100g / info.dailyValue * 100) : 0
                                 HStack {
-                                    Text("\(index + 1). \(item.name)")
+                                    Text("\(index + 1). \(NutrientTopFoods.localizedName(item.name))")
                                         .font(.body)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                    Text("\(formatFoodValue(item.per100g)) \(info.unit) (\(pct)% дн.)")
+                                    Text("\(formatFoodValue(item.per100g)) \(NutrientTopFoods.localizedUnit(info.unit)) \(String(format: String(localized: "(%lld%% дн.)"), pct))")
                                         .font(.callout)
                                         .fontWeight(.medium)
                                         .foregroundColor(.secondary)

@@ -104,7 +104,7 @@ class MainViewModel: ObservableObject {
                 } else {
                     for result in results {
                         let weight = result.weightGrams > 0 ? result.weightGrams : 100.0
-                        repo.addFoodEntry(foodName: result.foodName, weightGrams: weight, nutrients: result.nutrients, source: "manual", fromCache: result.fromCache)
+                        repo.addFoodEntry(foodName: result.foodName, foodNameEn: result.foodNameEn, weightGrams: weight, nutrients: result.nutrients, source: "manual", fromCache: result.fromCache)
                     }
                     foodInput = ""
                     refreshTodayData()
@@ -112,7 +112,7 @@ class MainViewModel: ObservableObject {
                 isLoading = false
             } catch {
                 isLoading = false
-                errorMessage = "Ошибка анализа: \(error.localizedDescription)"
+                errorMessage = String(format: String(localized: "Ошибка анализа: %@"), error.localizedDescription)
             }
         }
     }
@@ -127,7 +127,7 @@ class MainViewModel: ObservableObject {
             nutrients = food.nutrients
         }
 
-        repo.addFoodEntry(foodName: food.foodName, weightGrams: newWeight, nutrients: nutrients, source: pendingFoodSource, fromCache: food.fromCache)
+        repo.addFoodEntry(foodName: food.foodName, foodNameEn: food.foodNameEn, weightGrams: newWeight, nutrients: nutrients, source: pendingFoodSource, fromCache: food.fromCache)
         showConfirmDialog = false
         pendingFood = nil
         foodInput = ""
@@ -191,12 +191,12 @@ class MainViewModel: ObservableObject {
                     barcodeWeight = "100"
                     showBarcodeWeightDialog = true
                 } else {
-                    errorMessage = "Продукт не найден по штрих-коду: \(barcode)"
+                    errorMessage = String(format: String(localized: "Продукт не найден по штрих-коду: %@"), barcode)
                 }
                 isLoading = false
             } catch {
                 isLoading = false
-                errorMessage = "Ошибка поиска: \(error.localizedDescription)"
+                errorMessage = String(format: String(localized: "Ошибка поиска: %@"), error.localizedDescription)
             }
         }
     }
@@ -238,12 +238,12 @@ class MainViewModel: ObservableObject {
                     supplementServings = "1"
                     showSupplementDialog = true
                 } else {
-                    errorMessage = "БАД не найден по штрих-коду: \(barcode)"
+                    errorMessage = String(format: String(localized: "БАД не найден по штрих-коду: %@"), barcode)
                 }
                 isLoading = false
             } catch {
                 isLoading = false
-                errorMessage = "Ошибка поиска БАД: \(error.localizedDescription)"
+                errorMessage = String(format: String(localized: "Ошибка поиска БАД: %@"), error.localizedDescription)
             }
         }
     }
@@ -284,11 +284,11 @@ class MainViewModel: ObservableObject {
             } catch {
                 isLoading = false
                 if error.localizedDescription.contains("resolve host") || error.localizedDescription.contains("No address") {
-                    errorMessage = "Нет подключения к интернету. Проверьте сеть и попробуйте снова."
+                    errorMessage = String(localized: "Нет подключения к интернету. Проверьте сеть и попробуйте снова.")
                 } else if error.localizedDescription.contains("timeout") {
-                    errorMessage = "Превышено время ожидания. Проверьте интернет и попробуйте снова."
+                    errorMessage = String(localized: "Превышено время ожидания. Проверьте интернет и попробуйте снова.")
                 } else {
-                    errorMessage = "Ошибка распознавания фото: \(error.localizedDescription)"
+                    errorMessage = String(format: String(localized: "Ошибка распознавания фото: %@"), error.localizedDescription)
                 }
             }
         }
@@ -331,7 +331,7 @@ class MainViewModel: ObservableObject {
                     isLoading = false
                 } catch {
                     isLoading = false
-                    errorMessage = "Ошибка анализа: \(error.localizedDescription)"
+                    errorMessage = String(format: String(localized: "Ошибка анализа: %@"), error.localizedDescription)
                 }
             }
         }
@@ -344,18 +344,33 @@ class MainViewModel: ObservableObject {
     // MARK: - Profile
 
     func updateProfile(gender: String, age: Int, weight: Double, height: Double, goals: String, onComplete: @escaping () -> Void) {
+        // Only the expensive AI norms recalculation is gated behind an actual
+        // change in physiological inputs. Language / units live elsewhere and
+        // never reach this method, so they can't trigger a recalculation.
+        let old = repo.getProfile()
+        let physiologyChanged: Bool = {
+            guard let old else { return true }
+            return Gender.from(stored: gender) != Gender.from(stored: old.gender)
+                || age != old.age
+                || weight != old.weightKg
+                || height != old.heightCm
+                || goals.trimmingCharacters(in: .whitespacesAndNewlines) != old.goalsText.trimmingCharacters(in: .whitespacesAndNewlines)
+        }()
+
         isLoading = true
         errorMessage = nil
         Task {
             do {
                 repo.saveProfile(gender: gender, age: age, weight: weight, height: height, goals: goals)
-                let _ = try await repo.calculateAndSaveNorms(gender: gender, age: age, weight: weight, height: height, goals: goals)
+                if physiologyChanged {
+                    let _ = try await repo.calculateAndSaveNorms(gender: gender, age: age, weight: weight, height: height, goals: goals)
+                }
                 isLoading = false
                 loadData()
                 onComplete()
             } catch {
                 isLoading = false
-                errorMessage = "Ошибка обновления профиля: \(error.localizedDescription)"
+                errorMessage = String(format: String(localized: "Ошибка обновления профиля: %@"), error.localizedDescription)
             }
         }
     }
@@ -405,12 +420,12 @@ class MainViewModel: ObservableObject {
                     results = try await repo.analyzeFoodText(query)
                 } catch {
                     throw NSError(domain: "CustomDish", code: 1, userInfo: [
-                        NSLocalizedDescriptionKey: "Не удалось распознать «\(trimmed)»: \(error.localizedDescription)"
+                        NSLocalizedDescriptionKey: String(format: String(localized: "Не удалось распознать «%@»: %@"), trimmed, error.localizedDescription)
                     ])
                 }
                 guard !results.isEmpty else {
                     throw NSError(domain: "CustomDish", code: 1, userInfo: [
-                        NSLocalizedDescriptionKey: "Не удалось распознать «\(trimmed)»"
+                        NSLocalizedDescriptionKey: String(format: String(localized: "Не удалось распознать «%@»"), trimmed)
                     ])
                 }
                 for r in results { total = total + r.nutrients }
@@ -419,7 +434,7 @@ class MainViewModel: ObservableObject {
         }
         guard totalWeight > 0 else {
             throw NSError(domain: "CustomDish", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "Сумма весов ингредиентов должна быть больше 0"
+                NSLocalizedDescriptionKey: String(localized: "Сумма весов ингредиентов должна быть больше 0")
             ])
         }
         let per100g = total * (100.0 / totalWeight)
@@ -475,10 +490,6 @@ class MainViewModel: ObservableObject {
     }
 
     private func extractWeight(from text: String) -> Double {
-        let pattern = #"(\d+)\s*(г|гр|грамм|g|ml|мл)"#
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
-              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-              let range = Range(match.range(at: 1), in: text) else { return 0 }
-        return Double(text[range]) ?? 0
+        WeightParser.parse(text).grams
     }
 }
