@@ -223,6 +223,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
+					82DAF825C2EF3FF5EB054D3F = {
+						DevelopmentTeam = 3G27YFHY55;
+					};
 				};
 			};
 			buildConfigurationList = 5410DFDAE310878691ECC5A5 /* Build configuration list for PBXProject "NutritionTracker" */;
@@ -306,8 +309,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3G27YFHY55;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NutritionTracker/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Питание";
@@ -324,6 +329,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nutrition.tracker;
+				PROVISIONING_PROFILE_SPECIFIER = nutritionTracker;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -334,8 +340,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3G27YFHY55;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NutritionTracker/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Питание";

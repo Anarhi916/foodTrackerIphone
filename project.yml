@@ -19,6 +19,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nutrition.tracker
+        DEVELOPMENT_TEAM: 3G27YFHY55
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
@@ -32,3 +33,17 @@ targets:
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
+      configs:
+        # Debug/Run: automatic signing — Simulator needs no profile at all.
+        Debug:
+          CODE_SIGN_STYLE: Automatic
+          CODE_SIGN_IDENTITY: "Apple Development"
+        # Release/Archive: MANUAL signing with the existing manual App Store
+        # distribution profile "nutritionTracker" (UUID d338bef4-…, no devices,
+        # get-task-allow=false, valid until 2027-06). Manual avoids automatic
+        # signing's attempt to also mint a Development profile for team
+        # 3G27YFHY55 — which fails ("no devices") and breaks Archive.
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "Apple Distribution"
+          PROVISIONING_PROFILE_SPECIFIER: "nutritionTracker"
