@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SavedProductsScreen: View {
     @ObservedObject var viewModel: MainViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var searchQuery = ""
     @State private var showDeleteAllAlert = false
     @State private var showAddTypeDialog = false
@@ -26,6 +27,26 @@ struct SavedProductsScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            BrandHeader(
+                String(localized: "Сохранённые продукты"),
+                leading: {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
+                    }
+                },
+                trailing: {
+                    HStack(spacing: 16) {
+                        Button { showAddTypeDialog = true } label: {
+                            Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
+                        }
+                        if !viewModel.cachedFoods.isEmpty {
+                            Button { showDeleteAllAlert = true } label: {
+                                Image(systemName: "trash").font(.system(size: 17))
+                            }
+                        }
+                    }
+                }
+            )
             // Search bar
             HStack {
                 Image(systemName: "magnifyingglass").foregroundColor(.secondary)
@@ -84,22 +105,7 @@ struct SavedProductsScreen: View {
             }
         }
         .background(Color(.systemGray6))
-        .navigationTitle("Сохранённые продукты")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                HStack(spacing: 12) {
-                    Button { showAddTypeDialog = true } label: {
-                        Image(systemName: "plus")
-                    }
-                    if !viewModel.cachedFoods.isEmpty {
-                        Button { showDeleteAllAlert = true } label: {
-                            Image(systemName: "trash").foregroundColor(.red)
-                        }
-                    }
-                }
-            }
-        }
+        .navigationBarHidden(true)
         .alert("Удалить все продукты?", isPresented: $showDeleteAllAlert) {
             Button("Удалить всё", role: .destructive) { viewModel.deleteAllCachedFoods() }
             Button("Только штрих-коды", role: .destructive) { viewModel.deleteAllBarcodeAndSupplementEntries() }

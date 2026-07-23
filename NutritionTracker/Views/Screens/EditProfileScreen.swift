@@ -7,6 +7,14 @@ struct EditProfileScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            BrandHeader(
+                String(localized: "Профиль"),
+                leading: {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
+                    }
+                }
+            )
             Picker("", selection: $selectedTab) {
                 Text("Профиль").tag(0)
                 Text("Дневные нормы").tag(1)
@@ -22,8 +30,7 @@ struct EditProfileScreen: View {
             }
         }
         .background(Color(.systemGray6))
-        .navigationTitle("Профиль")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(true)
     }
 }
 
@@ -73,7 +80,7 @@ private struct ProfileDataTab: View {
                         Button(action: { gender = .male }) {
                             HStack(spacing: 6) {
                                 Image(systemName: gender == .male ? "largecircle.fill.circle" : "circle")
-                                    .foregroundColor(gender == .male ? .blue : .gray)
+                                    .foregroundColor(gender == .male ? NutritionTrackerApp.brandGreen : .gray)
                                 Text("Мужской")
                             }
                         }
@@ -81,7 +88,7 @@ private struct ProfileDataTab: View {
                         Button(action: { gender = .female }) {
                             HStack(spacing: 6) {
                                 Image(systemName: gender == .female ? "largecircle.fill.circle" : "circle")
-                                    .foregroundColor(gender == .female ? .blue : .gray)
+                                    .foregroundColor(gender == .female ? NutritionTrackerApp.brandGreen : .gray)
                                 Text("Женский")
                             }
                         }

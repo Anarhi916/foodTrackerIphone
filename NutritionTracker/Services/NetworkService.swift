@@ -1,5 +1,8 @@
 import Foundation
 
+// Клиент backend-прокси. Все AI/USDA-вызовы идут на наш сервер (/v1/*).
+// Нутриенты приходят на 100г (кроме supplement — на порцию); клиент масштабирует сам.
+// См. backend/ARCHITECTURE.md. NutrientData декодируется напрямую (snake_case совпадает).
 actor NetworkService {
     static let shared = NetworkService()
 
@@ -12,108 +15,170 @@ actor NetworkService {
         session = URLSession(configuration: config)
     }
 
-    // MARK: - OpenRouter
+    // MARK: - Общий POST на backend
 
-    func callOpenRouter(messages: [OpenRouterMessage], models: [String]) async throws -> String {
-        let model = models.first ?? "google/gemini-2.5-flash-lite"
-        let request = OpenRouterRequest(
-            model: model,
-            messages: messages,
-            temperature: 0.0,
-            maxTokens: 4096
-        )
+    private func post<Req: Encodable, Res: Decodable>(
+        _ path: String, body: Req, timeout: TimeInterval = 120
+    ) async throws -> Res {
+        let url = URL(string: "\(APIConfig.backendBaseURL)\(path)")!
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = timeout
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // Dev-авторизация. В prod заменяется на App Attest (X-Attest-*).
+        req.setValue(APIConfig.devAuthSecret, forHTTPHeaderField: "X-Dev-Auth")
+        req.setValue("ios", forHTTPHeaderField: "X-Platform")
+        req.httpBody = try JSONEncoder().encode(body)
 
-        var urlRequest = URLRequest(url: URL(string: APIConfig.openRouterBaseURL)!)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.setValue("Bearer \(APIConfig.openRouterApiKey)", forHTTPHeaderField: "Authorization")
-        urlRequest.httpBody = try JSONEncoder().encode(request)
-
-        let (data, response) = try await session.data(for: urlRequest)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            let body = String(data: data, encoding: .utf8) ?? ""
-            throw APIError.httpError(statusCode: httpResponse.statusCode, body: body)
-        }
-
-        let orResponse = try JSONDecoder().decode(OpenRouterResponse.self, from: data)
-        if let error = orResponse.error {
-            throw APIError.apiError(message: error.message ?? "Unknown error")
-        }
-
-        guard let content = orResponse.choices?.first?.message?.content else {
-            throw APIError.noContent
-        }
-
-        return content
-    }
-
-    func callOpenRouterWithRetry(messages: [OpenRouterMessage], models: [String], maxRetries: Int = 2) async throws -> String {
-        var lastError: Error?
-        for attempt in 0..<maxRetries {
-            do {
-                let modelIdx = min(attempt, models.count - 1)
-                let model = [models[modelIdx]]
-                return try await callOpenRouter(messages: messages, models: model)
-            } catch {
-                lastError = error
-                if attempt < maxRetries - 1 {
-                    try await Task.sleep(nanoseconds: UInt64(1_000_000_000 * (attempt + 1)))
-                }
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        guard http.statusCode == 200 else {
+            let bodyStr = String(data: data, encoding: .utf8) ?? ""
+            // Пытаемся достать message из {error, message}
+            if let errObj = try? JSONDecoder().decode(BackendError.self, from: data),
+               let msg = errObj.message {
+                throw APIError.apiError(message: msg)
             }
+            throw APIError.httpError(statusCode: http.statusCode, body: bodyStr)
         }
-        throw lastError ?? APIError.noContent
+        return try JSONDecoder().decode(Res.self, from: data)
     }
 
-    // MARK: - USDA
+    // MARK: - /v1/food/analyze (текст)
 
-    func searchUSDA(query: String, pageSize: Int = 25) async throws -> UsdaSearchResponse {
-        var components = URLComponents(string: APIConfig.usdaBaseURL)!
-        components.queryItems = [
-            URLQueryItem(name: "api_key", value: APIConfig.usdaApiKey),
-            URLQueryItem(name: "query", value: query),
-            URLQueryItem(name: "pageSize", value: String(pageSize))
-        ]
-
-        var urlRequest = URLRequest(url: components.url!)
-        urlRequest.timeoutInterval = 15
-
-        let (data, _) = try await session.data(for: urlRequest)
-        return try JSONDecoder().decode(UsdaSearchResponse.self, from: data)
+    func analyzeFood(items: [AnalyzeItem], uiLang: String, useCache: Bool = true) async throws -> [BackendFoodResult] {
+        let body = AnalyzeRequest(items: items, uiLang: uiLang, useCache: useCache)
+        let res: AnalyzeResponse = try await post("/v1/food/analyze", body: body)
+        return res.results
     }
 
-    // MARK: - OpenFoodFacts
+    // MARK: - /v1/food/dish (целое блюдо — фото со сменой имени)
+
+    func analyzeDish(dishName: String) async throws -> DishResponse {
+        try await post("/v1/food/dish", body: DishRequest(dishName: dishName))
+    }
+
+    // MARK: - /v1/food/photo
+
+    func analyzePhoto(imageBase64: String, uiLang: String) async throws -> PhotoResponse {
+        try await post("/v1/food/photo", body: PhotoRequest(imageBase64: imageBase64, uiLang: uiLang))
+    }
+
+    // MARK: - /v1/food/enrich (штрихкод — OFF-данные от клиента)
+
+    func enrichBarcode(name: String, nutrientsPer100g: NutrientData) async throws -> EnrichResponse {
+        try await post("/v1/food/enrich", body: EnrichRequest(name: name, nutrientsPer100g: nutrientsPer100g))
+    }
+
+    // MARK: - /v1/food/supplement (БАД — OFF-данные от клиента)
+
+    func analyzeSupplement(name: String, servingSize: String, barcode: String) async throws -> SupplementResponse {
+        try await post("/v1/food/supplement", body: SupplementRequest(name: name, servingSize: servingSize, barcode: barcode))
+    }
+
+    // MARK: - /v1/norms
+
+    func calculateNorms(gender: String, age: Int, weight: Double, height: Double, goals: String) async throws -> NutrientData {
+        let body = NormsRequest(gender: gender, age: age, weight: weight, height: height, goals: goals)
+        let res: NormsResponse = try await post("/v1/norms", body: body)
+        return res.norms
+    }
+
+    // MARK: - OpenFoodFacts (штрихкод — остаётся на клиенте, свой IP)
 
     func lookupBarcode(_ barcode: String) async throws -> OpenFoodFactsResponse {
         let url = URL(string: "\(APIConfig.openFoodFactsBaseURL)/api/v2/product/\(barcode).json")!
         var urlRequest = URLRequest(url: url)
         urlRequest.setValue("NutritionTracker/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
         urlRequest.timeoutInterval = 15
-
         let (data, _) = try await session.data(for: urlRequest)
         return try JSONDecoder().decode(OpenFoodFactsResponse.self, from: data)
     }
+}
 
-    func searchOFF(terms: String) async throws -> OFFSearchResponse {
-        var components = URLComponents(string: "\(APIConfig.openFoodFactsBaseURL)/cgi/search.pl")!
-        components.queryItems = [
-            URLQueryItem(name: "search_terms", value: terms),
-            URLQueryItem(name: "json", value: "1"),
-            URLQueryItem(name: "page_size", value: "5"),
-            URLQueryItem(name: "fields", value: "product_name,product_name_en,nutriments")
-        ]
+// MARK: - Backend request/response модели
 
-        var urlRequest = URLRequest(url: components.url!)
-        urlRequest.setValue("NutritionTracker/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
-        urlRequest.timeoutInterval = 15
+struct AnalyzeItem: Encodable {
+    let name: String
+    let grams: Double
+}
 
-        let (data, _) = try await session.data(for: urlRequest)
-        return try JSONDecoder().decode(OFFSearchResponse.self, from: data)
-    }
+struct AnalyzeRequest: Encodable {
+    let items: [AnalyzeItem]
+    let uiLang: String
+    let useCache: Bool
+}
+
+struct BackendFoodResult: Decodable {
+    let foodName: String
+    let foodNameEn: String
+    let weightGrams: Double
+    let nutrientsPer100g: NutrientData
+    let fromCache: Bool
+}
+
+struct AnalyzeResponse: Decodable {
+    let results: [BackendFoodResult]
+}
+
+struct DishRequest: Encodable {
+    let dishName: String
+}
+
+struct DishResponse: Decodable {
+    let foodNameEn: String
+    let nutrientsPer100g: NutrientData
+}
+
+struct PhotoRequest: Encodable {
+    let imageBase64: String
+    let uiLang: String
+}
+
+struct PhotoResponse: Decodable {
+    let foodName: String
+    let foodNameEn: String
+    let weightGrams: Double
+    let nutrientsPer100g: NutrientData
+}
+
+struct EnrichRequest: Encodable {
+    let name: String
+    let nutrientsPer100g: NutrientData
+}
+
+struct EnrichResponse: Decodable {
+    let name: String
+    let nutrientsPer100g: NutrientData
+}
+
+struct SupplementRequest: Encodable {
+    let name: String
+    let servingSize: String
+    let barcode: String
+}
+
+struct SupplementResponse: Decodable {
+    let name: String
+    let servingSize: String
+    let nutrientsPerServing: NutrientData
+}
+
+struct NormsRequest: Encodable {
+    let gender: String
+    let age: Int
+    let weight: Double
+    let height: Double
+    let goals: String
+}
+
+struct NormsResponse: Decodable {
+    let norms: NutrientData
+}
+
+struct BackendError: Decodable {
+    let error: String?
+    let message: String?
 }
 
 // MARK: - Errors

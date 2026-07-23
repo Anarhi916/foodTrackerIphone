@@ -1,10 +1,41 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 @main
 struct NutritionTrackerApp: App {
     @StateObject private var viewModel = MainViewModel()
     @StateObject private var localization = LocalizationManager.shared
+
+    // Бренд-зелёный. Насыщенный глубокий зелёный (#1B9E3E), заданный явно в sRGB,
+    // чтобы цвет не приглушался цветовым пространством дисплея.
+    static let brandGreenUI = UIColor(
+        displayP3Red: 0x1B/255.0, green: 0x9E/255.0, blue: 0x3E/255.0, alpha: 1.0
+    )
+    static let brandGreen = Color(.sRGB, red: 0x1B/255.0, green: 0x9E/255.0, blue: 0x3E/255.0)
+
+    init() {
+        // Глобальный вид навбара: зелёный фон + белый заголовок/кнопки на ВСЕХ экранах
+        // (как Android TopAppBar). Иначе дочерние экраны наследуют системный белый бар.
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = Self.brandGreenUI
+        appearance.shadowColor = .clear   // без полупрозрачной разделительной линии
+        appearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+        appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.white]
+
+        // Убрать «капсулы»-фон под toolbar-иконками (iOS 26 рисует их по умолчанию).
+        let buttonAppearance = UIBarButtonItemAppearance()
+        buttonAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.white]
+        appearance.buttonAppearance = buttonAppearance
+        appearance.doneButtonAppearance = buttonAppearance
+        appearance.backButtonAppearance = buttonAppearance
+
+        UINavigationBar.appearance().standardAppearance = appearance
+        UINavigationBar.appearance().scrollEdgeAppearance = appearance
+        UINavigationBar.appearance().compactAppearance = appearance
+        UINavigationBar.appearance().tintColor = .white   // кнопка «назад» + иконки белые
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -12,6 +43,7 @@ struct NutritionTrackerApp: App {
                 .environmentObject(viewModel)
                 .environmentObject(localization)
                 .environment(\.locale, localization.locale)
+                .tint(Color(Self.brandGreenUI))   // зелёный акцент для controls на всех экранах
                 .id(localization.language)   // rebuild the whole tree on language change
                 .modelContainer(DatabaseManager.shared.container)
                 .onOpenURL { url in

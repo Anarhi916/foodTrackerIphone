@@ -2,27 +2,37 @@ import SwiftUI
 
 struct HistoryScreen: View {
     @ObservedObject var viewModel: MainViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var expandedDates: Set<String> = []
     @State private var allDates: [String] = []
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                if allDates.isEmpty {
-                    Text("Нет данных за последние 14 дней")
-                        .foregroundColor(.secondary)
-                        .padding(.top, 40)
-                } else {
-                    ForEach(allDates, id: \.self) { date in
-                        dayCard(for: date)
+        VStack(spacing: 0) {
+            BrandHeader(
+                String(localized: "История (14 дней)"),
+                leading: {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
                     }
                 }
+            )
+            ScrollView {
+                VStack(spacing: 12) {
+                    if allDates.isEmpty {
+                        Text("Нет данных за последние 14 дней")
+                            .foregroundColor(.secondary)
+                            .padding(.top, 40)
+                    } else {
+                        ForEach(allDates, id: \.self) { date in
+                            dayCard(for: date)
+                        }
+                    }
+                }
+                .padding()
             }
-            .padding()
+            .background(Color(.systemGray6))
         }
-        .background(Color(.systemGray6))
-        .navigationTitle("История (14 дней)")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(true)
         .onAppear { allDates = NutritionRepository.shared.getRecentDates() }
     }
 

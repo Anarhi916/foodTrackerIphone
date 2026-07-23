@@ -14,37 +14,67 @@ struct MainScreen: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    // Food input
-                    foodInputSection
-
-                    // Error message
-                    if let error = viewModel.errorMessage {
-                        HStack {
-                            Text(error)
-                                .foregroundColor(.red)
-                                .font(.caption)
-                            Spacer()
-                            Button("✕") { viewModel.clearError() }
+            VStack(spacing: 0) {
+                // Кастомный зелёный хедер (без системных glass-капсул iOS 26).
+                BrandHeader(
+                    String(localized: "Nutrition Tracker"),
+                    leading: {
+                        Menu {
+                            NavigationLink(destination: EditProfileScreen(viewModel: viewModel)) {
+                                Label("Профиль", systemImage: "person.circle")
+                            }
+                            NavigationLink(destination: SavedProductsScreen(viewModel: viewModel)) {
+                                Label("Сохранённые продукты", systemImage: "archivebox")
+                            }
+                            NavigationLink(destination: HistoryScreen(viewModel: viewModel)) {
+                                Label("История", systemImage: "clock")
+                            }
+                            NavigationLink(destination: StatisticsScreen(viewModel: viewModel)) {
+                                Label("Статистика", systemImage: "chart.bar")
+                            }
+                        } label: {
+                            Image(systemName: "line.3.horizontal").font(.system(size: 20))
                         }
-                        .padding(.horizontal)
+                    },
+                    trailing: {
+                        NavigationLink(destination: HistoryScreen(viewModel: viewModel)) {
+                            Image(systemName: "clock.arrow.circlepath").font(.system(size: 20))
+                        }
                     }
+                )
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // Food input
+                        foodInputSection
 
-                    // Today's entries
-                    foodEntriesTable
+                        // Error message
+                        if let error = viewModel.errorMessage {
+                            HStack {
+                                Text(error)
+                                    .foregroundColor(.red)
+                                    .font(.caption)
+                                Spacer()
+                                Button("✕") { viewModel.clearError() }
+                            }
+                            .padding(.horizontal)
+                        }
 
-                    // Progress sections
-                    if viewModel.dailyNorms != nil {
-                        macrosSection
-                        vitaminsSection
-                        mineralsSection
-                        fatDetailsSection
+                        // Today's entries
+                        foodEntriesTable
+
+                        // Progress sections
+                        if viewModel.dailyNorms != nil {
+                            macrosSection
+                            vitaminsSection
+                            mineralsSection
+                            fatDetailsSection
+                        }
                     }
+                    .padding()
                 }
-                .padding()
+                .background(Color(.systemGray6))
             }
-            .background(Color(.systemGray6))
+            .navigationBarHidden(true)
             .overlay {
                 if viewModel.isLoading {
                     ZStack {
@@ -55,33 +85,6 @@ struct MainScreen: View {
                         }
                         .padding(24)
                         .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemBackground)))
-                    }
-                }
-            }
-            .navigationTitle("Питание от Андрюхи")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Menu {
-                        NavigationLink(destination: EditProfileScreen(viewModel: viewModel)) {
-                            Label("Профиль", systemImage: "person.circle")
-                        }
-                        NavigationLink(destination: SavedProductsScreen(viewModel: viewModel)) {
-                            Label("Сохранённые продукты", systemImage: "archivebox")
-                        }
-                        NavigationLink(destination: HistoryScreen(viewModel: viewModel)) {
-                            Label("История", systemImage: "clock")
-                        }
-                        NavigationLink(destination: StatisticsScreen(viewModel: viewModel)) {
-                            Label("Статистика", systemImage: "chart.bar")
-                        }
-                    } label: {
-                        Image(systemName: "line.3.horizontal")
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: HistoryScreen(viewModel: viewModel)) {
-                        Image(systemName: "clock.arrow.circlepath")
                     }
                 }
             }
@@ -141,30 +144,26 @@ struct MainScreen: View {
         }.prefix(5).map { $0 }
     }
 
+    // Акцентный зелёный как на Android (#388E3C).
+    private var brandGreen: Color { Color(red: 0x38/255, green: 0x8E/255, blue: 0x3C/255) }
+
     private var foodInputSection: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 8) {
-                TextField("Что вы съели?", text: $viewModel.foodInput)
-                    .font(.body)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color(.secondarySystemBackground))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(Color(.separator), lineWidth: 0.5)
-                    )
-                    .focused($foodInputFocused)
-                    .onSubmit { viewModel.analyzeFood() }
-                Button(action: { viewModel.analyzeFood() }) {
-                    Image(systemName: "arrow.right.circle.fill")
-                        .font(.system(size: 34))
-                        .foregroundColor(.green)
-                }
-                .disabled(viewModel.foodInput.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isLoading)
-            }
+        VStack(spacing: 8) {
+            // Многострочное поле ввода (2-3 строки), как на Android.
+            TextField("Что вы съели?", text: $viewModel.foodInput, axis: .vertical)
+                .font(.body)
+                .lineLimit(2...3)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color(.secondarySystemBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color(.separator), lineWidth: 0.5)
+                )
+                .focused($foodInputFocused)
 
             // Suggestions from cache
             if !suggestions.isEmpty {
@@ -187,7 +186,7 @@ struct MainScreen: View {
                                 }
                                 Spacer()
                                 Image(systemName: "plus.circle.fill")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(brandGreen)
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
@@ -201,46 +200,51 @@ struct MainScreen: View {
                 .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray4)))
             }
 
-            HStack(spacing: 12) {
-                NavigationLink(destination: BarcodeScannerScreen(viewModel: viewModel, mode: .food)) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "barcode.viewfinder")
-                        Text("Штрих-код")
-                    }
-                    .font(.subheadline)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.blue.opacity(0.1))
-                    .foregroundColor(.blue)
-                    .cornerRadius(8)
+            // Широкая кнопка "Добавить" снизу, как на Android.
+            // disabled → серая (Material filled Button), active → насыщенный зелёный.
+            let addDisabled = viewModel.foodInput.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isLoading
+            Button(action: { viewModel.analyzeFood() }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                    Text("Добавить")
                 }
-                NavigationLink(destination: PhotoCaptureScreen(viewModel: viewModel)) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "camera")
-                        Text("Фото")
-                    }
-                    .font(.subheadline)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.green.opacity(0.1))
-                    .foregroundColor(.green)
-                    .cornerRadius(8)
+                .font(.headline)
+                .foregroundColor(addDisabled ? Color(.systemGray) : .white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(RoundedRectangle(cornerRadius: 24).fill(addDisabled ? Color(.systemGray4) : brandGreen))
+            }
+            .disabled(addDisabled)
+
+            // 3 равные outlined кнопки-иконки: Штрих-код / БАД / Фото (порядок как Android).
+            HStack(spacing: 8) {
+                NavigationLink(destination: BarcodeScannerScreen(viewModel: viewModel, mode: .food)) {
+                    Image(systemName: "barcode.viewfinder")
+                        .font(.system(size: 20))
+                        .foregroundColor(brandGreen)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .overlay(RoundedRectangle(cornerRadius: 24).stroke(brandGreen.opacity(0.5), lineWidth: 1))
                 }
                 NavigationLink(destination: BarcodeScannerScreen(viewModel: viewModel, mode: .supplement)) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "pills")
-                        Text("БАД")
-                    }
-                    .font(.subheadline)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.purple.opacity(0.1))
-                    .foregroundColor(.purple)
-                    .cornerRadius(8)
+                    Text("💊")
+                        .font(.system(size: 20))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .overlay(RoundedRectangle(cornerRadius: 24).stroke(brandGreen.opacity(0.5), lineWidth: 1))
                 }
-                Spacer()
+                NavigationLink(destination: PhotoCaptureScreen(viewModel: viewModel)) {
+                    Image(systemName: "camera")
+                        .font(.system(size: 20))
+                        .foregroundColor(brandGreen)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .overlay(RoundedRectangle(cornerRadius: 24).stroke(brandGreen.opacity(0.5), lineWidth: 1))
+                }
             }
         }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
     }
 
     // MARK: - Food Table

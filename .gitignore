@@ -38,3 +38,6 @@ local.properties
 
 # Secrets
 NutritionTracker/Config.plist
+distribution.cer
+nutritionTracker.mobileprovision
+i18n_source_strings.json

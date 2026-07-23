@@ -16,6 +16,7 @@ enum StatPeriod: String, CaseIterable {
 
 struct StatisticsScreen: View {
     @ObservedObject var viewModel: MainViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var selectedPeriod: StatPeriod = .week
     @State private var startDate = Calendar.current.date(byAdding: .day, value: -6, to: Date())!
     @State private var endDate = Date()
@@ -56,26 +57,35 @@ struct StatisticsScreen: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
-                // Period selector card
-                periodCard
-
-                if isLoading {
-                    ProgressView().padding(.top, 40)
-                } else if let t = totals {
-                    let normForPeriod = viewModel.dailyNorms.map { $0 * Double(numDays) }
-                    NutrientStatCard(title: String(localized: "БЖУ и Калории"), items: t.macrosList(), normItems: normForPeriod?.macrosList())
-                    NutrientStatCard(title: String(localized: "Витамины"), items: t.vitaminsList(), normItems: normForPeriod?.vitaminsList())
-                    NutrientStatCard(title: String(localized: "Минералы и микроэлементы"), items: t.mineralsList(), normItems: normForPeriod?.mineralsList())
-                    NutrientStatCard(title: String(localized: "Жиры (детально)"), items: t.fatDetailsList(), normItems: normForPeriod?.fatDetailsList())
+        VStack(spacing: 0) {
+            BrandHeader(
+                String(localized: "Статистика"),
+                leading: {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
+                    }
                 }
+            )
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    // Period selector card
+                    periodCard
+
+                    if isLoading {
+                        ProgressView().padding(.top, 40)
+                    } else if let t = totals {
+                        let normForPeriod = viewModel.dailyNorms.map { $0 * Double(numDays) }
+                        NutrientStatCard(title: String(localized: "БЖУ и Калории"), items: t.macrosList(), normItems: normForPeriod?.macrosList())
+                        NutrientStatCard(title: String(localized: "Витамины"), items: t.vitaminsList(), normItems: normForPeriod?.vitaminsList())
+                        NutrientStatCard(title: String(localized: "Минералы и микроэлементы"), items: t.mineralsList(), normItems: normForPeriod?.mineralsList())
+                        NutrientStatCard(title: String(localized: "Жиры (детально)"), items: t.fatDetailsList(), normItems: normForPeriod?.fatDetailsList())
+                    }
+                }
+                .padding(16)
             }
-            .padding(16)
+            .background(Color(.systemGray6))
         }
-        .background(Color(.systemGray6))
-        .navigationTitle("Статистика")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(true)
         .onAppear { loadData() }
         .onChange(of: selectedPeriod) { _ in loadData() }
         .onChange(of: startDate) { _ in if selectedPeriod == .custom { loadData() } }
@@ -215,7 +225,7 @@ private struct NutrientStatCard: View {
                 }()
                 let pctColor: Color = {
                     guard let p = pct else { return .primary }
-                    if p >= 90 { return .green }
+                    if p >= 90 { return NutritionTrackerApp.brandGreen }
                     if p >= 50 { return .primary }
                     return .red
                 }()

@@ -22,17 +22,9 @@ targets:
         DEVELOPMENT_TEAM: 3G27YFHY55
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
-        INFOPLIST_KEY_NSCameraUsageDescription: "Камера используется для сканирования штрих-кодов и фотографирования еды"
-        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Доступ к фото для выбора изображений еды для анализа"
-        INFOPLIST_KEY_CFBundleDisplayName: "Питание"
+        INFOPLIST_FILE: NutritionTracker/Info.plist
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1"
-        GENERATE_INFOPLIST_FILE: YES
       configs:
         # Debug/Run: automatic signing — Simulator needs no profile at all.
         Debug:

@@ -132,7 +132,7 @@ struct NutrientProgressBar: View {
                 if hasTopFoods {
                     Image(systemName: "info.circle")
                         .font(.system(size: 13))
-                        .foregroundColor(.blue.opacity(0.6))
+                        .foregroundColor(Color(red: 0x38/255, green: 0x8E/255, blue: 0x3C/255).opacity(0.6))
                         .onTapGesture { onInfoTap() }
                 }
                 Text(name).font(.caption).lineLimit(1)

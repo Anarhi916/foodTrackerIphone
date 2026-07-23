@@ -12,6 +12,7 @@
 		1EC2D9F3E6CDEBDFDED5CBDE /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A41AB301EE4464F8BF5C2AC /* APIConfig.swift */; };
 		24C82E8FBA5AF64D22A759C0 /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5380C3870354411AA5A9B5FF /* Config.plist */; };
 		25169DE4CD0DF08846766496 /* NutrientData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C8BD45C28AE063C1F107E5 /* NutrientData.swift */; };
+		2CD16F0A7F87FE378FC8CF8D /* BrandHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62013E9DE406A4B20AFA06BF /* BrandHeader.swift */; };
 		38F99D484D52975AF70CE4AA /* Config.plist.example in Resources */ = {isa = PBXBuildFile; fileRef = 544A42877CE36068FF09C2D0 /* Config.plist.example */; };
 		3F449C05E8F06D049678A51E /* NutrientTopFoods.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26C2CDDE81836F738E6F5D88 /* NutrientTopFoods.swift */; };
 		46D19B120AF84403DC243CDB /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F6818A8D96C3239F8AD7C5D0 /* Localizable.xcstrings */; };
@@ -54,6 +55,7 @@
 		5380C3870354411AA5A9B5FF /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Config.plist; sourceTree = "<group>"; };
 		544A42877CE36068FF09C2D0 /* Config.plist.example */ = {isa = PBXFileReference; path = Config.plist.example; sourceTree = "<group>"; };
 		5EC5CC32F5A97D5CFA5F32A8 /* StatisticsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsScreen.swift; sourceTree = "<group>"; };
+		62013E9DE406A4B20AFA06BF /* BrandHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandHeader.swift; sourceTree = "<group>"; };
 		6A41AB301EE4464F8BF5C2AC /* APIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfig.swift; sourceTree = "<group>"; };
 		6F6EA6B0665353088A42FC27 /* SavedProductsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedProductsScreen.swift; sourceTree = "<group>"; };
 		72C52FC98D1E411D3D1B50F5 /* NutritionTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionTrackerApp.swift; sourceTree = "<group>"; };
@@ -148,6 +150,7 @@
 		92245BEF23E475EA1DC7DC9A /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				62013E9DE406A4B20AFA06BF /* BrandHeader.swift */,
 				53425435C67B97BE4FFF328C /* LanguagePickerButton.swift */,
 				1385FF6147B5B0FC726AEA8A /* NutrientProgressView.swift */,
 			);
@@ -276,6 +279,7 @@
 				1EC2D9F3E6CDEBDFDED5CBDE /* APIConfig.swift in Sources */,
 				9D2ED9C4EDE6E811299628B3 /* APIModels.swift in Sources */,
 				95BCC993BA8623B150266E1C /* BarcodeScannerScreen.swift in Sources */,
+				2CD16F0A7F87FE378FC8CF8D /* BrandHeader.swift in Sources */,
 				A39D39238C13525D1E48EBD7 /* DatabaseManager.swift in Sources */,
 				D9BE271D7782AEE94B0F1F9E /* DatabaseModels.swift in Sources */,
 				E3ED6C5D039396C1F44C8915 /* EditProfileScreen.swift in Sources */,
@@ -313,16 +317,7 @@
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3G27YFHY55;
-				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NutritionTracker/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Питание";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Камера используется для сканирования штрих-кодов и фотографирования еды";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Доступ к фото для выбора изображений еды для анализа";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -344,16 +339,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3G27YFHY55;
-				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NutritionTracker/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Питание";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Камера используется для сканирования штрих-кодов и фотографирования еды";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Доступ к фото для выбора изображений еды для анализа";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
