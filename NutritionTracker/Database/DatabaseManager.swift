@@ -44,8 +44,15 @@ class DatabaseManager {
     }
 
     func saveProfile(gender: String, age: Int, weight: Double, height: Double, goals: String) {
-        let profile = UserProfile(gender: gender, age: age, weightKg: weight, heightCm: height, goalsText: goals)
-        context.insert(profile)
+        // Обновляем существующий ряд (сохраняя updatedAt-семантику), иначе создаём.
+        if let existing = getProfile() {
+            existing.gender = gender; existing.age = age; existing.weightKg = weight
+            existing.heightCm = height; existing.goalsText = goals
+            existing.updatedAt = Date(); existing.deletedAt = nil
+        } else {
+            let profile = UserProfile(gender: gender, age: age, weightKg: weight, heightCm: height, goalsText: goals)
+            context.insert(profile)
+        }
         try? context.save()
     }
 
@@ -57,11 +64,14 @@ class DatabaseManager {
     }
 
     func saveDailyNorms(nutrientsJson: String) {
-        // Delete old norms
-        let all = (try? context.fetch(FetchDescriptor<DailyNorms>())) ?? []
-        for item in all { context.delete(item) }
-        let norms = DailyNorms(nutrientsJson: nutrientsJson)
-        context.insert(norms)
+        // Обновляем единственный ряд норм (для корректной синхронизации updatedAt).
+        if let existing = getDailyNorms() {
+            existing.nutrientsJson = nutrientsJson
+            existing.updatedAt = Date(); existing.deletedAt = nil
+        } else {
+            let norms = DailyNorms(nutrientsJson: nutrientsJson)
+            context.insert(norms)
+        }
         try? context.save()
     }
 
@@ -69,7 +79,7 @@ class DatabaseManager {
 
     func getEntriesForDate(_ date: String) -> [FoodEntry] {
         let descriptor = FetchDescriptor<FoodEntry>(
-            predicate: #Predicate { $0.date == date },
+            predicate: #Predicate { $0.date == date && $0.deletedAt == nil },
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
         )
         return (try? context.fetch(descriptor)) ?? []
@@ -77,21 +87,27 @@ class DatabaseManager {
 
     func getEntriesForDateRange(start: String, end: String) -> [FoodEntry] {
         let descriptor = FetchDescriptor<FoodEntry>(
-            predicate: #Predicate { $0.date >= start && $0.date <= end },
+            predicate: #Predicate { $0.date >= start && $0.date <= end && $0.deletedAt == nil },
             sortBy: [SortDescriptor(\.date, order: .reverse), SortDescriptor(\.createdAt)]
         )
         return (try? context.fetch(descriptor)) ?? []
     }
 
     func getRecentDates(limit: Int = 14) -> [String] {
-        let descriptor = FetchDescriptor<FoodEntry>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        let descriptor = FetchDescriptor<FoodEntry>(
+            predicate: #Predicate { $0.deletedAt == nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
         let entries = (try? context.fetch(descriptor)) ?? []
         let dates = Array(Set(entries.map(\.date))).sorted(by: >)
         return Array(dates.prefix(limit))
     }
 
     func getAllDates() -> [String] {
-        let descriptor = FetchDescriptor<FoodEntry>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        let descriptor = FetchDescriptor<FoodEntry>(
+            predicate: #Predicate { $0.deletedAt == nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
         let entries = (try? context.fetch(descriptor)) ?? []
         return Array(Set(entries.map(\.date))).sorted(by: >)
     }
@@ -109,46 +125,43 @@ class DatabaseManager {
         let newNutrients = oldNutrients * factor
         entry.weightGrams = newWeight
         entry.nutrientsJson = encodeNutrients(newNutrients)
+        entry.updatedAt = Date()
         try? context.save()
     }
 
     func deleteFoodEntry(_ entry: FoodEntry) {
-        context.delete(entry)
+        // Soft delete — синхронизируется как tombstone (см. sync-architecture).
+        entry.deletedAt = Date()
+        entry.updatedAt = Date()
         try? context.save()
-    }
-
-    func cleanupOldEntries() {
-        let cutoffDate = Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date()
-        let cutoffStr = Self.dateFormatter.string(from: cutoffDate)
-        let descriptor = FetchDescriptor<FoodEntry>(predicate: #Predicate { $0.date < cutoffStr })
-        if let old = try? context.fetch(descriptor) {
-            for entry in old { context.delete(entry) }
-            try? context.save()
-        }
     }
 
     // MARK: - Food Cache
 
     func findInCache(key: String) -> FoodCache? {
         let normalized = normalizeKey(key)
-        let descriptor = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyNormalized == normalized })
+        let descriptor = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyNormalized == normalized && $0.deletedAt == nil })
         if let found = try? context.fetch(descriptor).first { return found }
         // Try by normalized English key (language-neutral canonical bridge).
-        // Compares normalized-to-normalized so multi-word names match consistently
-        // (fixes the old bug where a normalized query was compared to a raw keyEn).
-        let descEn = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyEnNormalized == normalized })
+        let descEn = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyEnNormalized == normalized && $0.deletedAt == nil })
         return try? context.fetch(descEn).first
     }
 
     func saveToCache(keyOriginal: String, keyEn: String, nutrientsPer100g: NutrientData) {
         let normalized = normalizeKey(keyOriginal)
         let normalizedEn = normalizeKey(keyEn)
-        // Check duplicates
+        // Если ряд уже есть (включая tombstone) — «воскрешаем»/обновляем его.
         let desc1 = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyNormalized == normalized })
-        if (try? context.fetch(desc1).first) != nil { return }
+        if let existing = try? context.fetch(desc1).first {
+            existing.nutrientsPer100gJson = encodeNutrients(nutrientsPer100g)
+            existing.keyEn = keyEn; existing.keyEnNormalized = normalizedEn
+            existing.deletedAt = nil; existing.updatedAt = Date()
+            try? context.save()
+            return
+        }
 
-        if !keyOriginal.hasPrefix("barcode:") && !keyOriginal.hasPrefix("supplement:") {
-            let desc2 = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyEnNormalized == normalizedEn })
+        if !keyOriginal.hasPrefix("barcode:") {
+            let desc2 = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyEnNormalized == normalizedEn && $0.deletedAt == nil })
             if (try? context.fetch(desc2).first) != nil { return }
         }
 
@@ -161,49 +174,53 @@ class DatabaseManager {
     func getAllCachedFoods() -> [FoodCache] {
         let descriptor = FetchDescriptor<FoodCache>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
         let all = (try? context.fetch(descriptor)) ?? []
-        return all.filter { !$0.keyOriginal.hasPrefix("barcode:") && !$0.keyOriginal.hasPrefix("supplement:") }
+        return all.filter { !$0.keyOriginal.hasPrefix("barcode:") && $0.deletedAt == nil }
     }
 
     func deleteCachedFood(_ entry: FoodCache) {
-        if !entry.keyOriginal.hasPrefix("barcode:") && !entry.keyOriginal.hasPrefix("supplement:") {
-            // Also delete barcode/supplement entries for same product
+        if !entry.keyOriginal.hasPrefix("barcode:") {
+            // Also soft-delete barcode entries for same product
             let keyEn = entry.keyEn
             let desc = FetchDescriptor<FoodCache>(predicate: #Predicate {
-                ($0.keyOriginal.contains("barcode:") || $0.keyOriginal.contains("supplement:")) && $0.keyEn == keyEn
+                $0.keyOriginal.contains("barcode:") && $0.keyEn == keyEn
             })
             if let related = try? context.fetch(desc) {
-                for r in related { context.delete(r) }
+                for r in related { r.deletedAt = Date(); r.updatedAt = Date() }
             }
         }
-        context.delete(entry)
+        entry.deletedAt = Date()
+        entry.updatedAt = Date()
         try? context.save()
     }
 
     func deleteAllCachedFoods() {
         let all = (try? context.fetch(FetchDescriptor<FoodCache>())) ?? []
-        for item in all { context.delete(item) }
+        for item in all where item.deletedAt == nil {
+            item.deletedAt = Date(); item.updatedAt = Date()
+        }
         try? context.save()
     }
 
-    /// Deletes only the products that originate from a barcode or supplement scan.
+    /// Deletes only the products that originate from a barcode scan.
     /// Matches the Android behavior: removes every cache row whose keyEn is shared
-    /// with a hidden `barcode:` / `supplement:` entry (i.e. the visible product plus
-    /// its technical barcode/supplement rows).
-    func deleteAllBarcodeAndSupplementEntries() {
+    /// with a hidden `barcode:` entry (i.e. the visible product plus
+    /// its technical barcode rows).
+    func deleteAllBarcodeEntries() {
         let all = (try? context.fetch(FetchDescriptor<FoodCache>())) ?? []
         let targetKeyEns = Set(
-            all.filter { $0.keyOriginal.hasPrefix("barcode:") || $0.keyOriginal.hasPrefix("supplement:") }
+            all.filter { $0.keyOriginal.hasPrefix("barcode:") }
                .map { $0.keyEn }
         )
         guard !targetKeyEns.isEmpty else { return }
-        for item in all where targetKeyEns.contains(item.keyEn) {
-            context.delete(item)
+        for item in all where targetKeyEns.contains(item.keyEn) && item.deletedAt == nil {
+            item.deletedAt = Date(); item.updatedAt = Date()
         }
         try? context.save()
     }
 
     func updateCachedFoodNutrients(_ entry: FoodCache, nutrients: NutrientData) {
         entry.nutrientsPer100gJson = encodeNutrients(nutrients)
+        entry.updatedAt = Date()
         try? context.save()
     }
 
@@ -213,6 +230,7 @@ class DatabaseManager {
         entry.keyEn = nameEn
         entry.keyEnNormalized = normalizeKey(nameEn)
         entry.nutrientsPer100gJson = encodeNutrients(nutrients)
+        entry.updatedAt = Date()
         try? context.save()
     }
 
@@ -223,6 +241,117 @@ class DatabaseManager {
         guard let stale = try? context.fetch(descriptor), !stale.isEmpty else { return }
         for row in stale {
             row.keyEnNormalized = normalizeKey(row.keyEn)
+        }
+        try? context.save()
+    }
+
+    // MARK: - Sync (см. sync-architecture)
+
+    private static func ms(_ date: Date) -> Int64 { Int64(date.timeIntervalSince1970 * 1000) }
+    private static func date(_ ms: Int64) -> Date { Date(timeIntervalSince1970: Double(ms) / 1000) }
+
+    /// Собрать локальную дельту (всё, что изменилось после `since` ms). since=0 → всё.
+    func collectChanges(since: Int64) -> SyncPushRequest {
+        let sinceDate = Self.date(since)
+
+        var profileDTO: SyncProfileDTO?
+        if let p = getProfile(), p.updatedAt > sinceDate {
+            profileDTO = SyncProfileDTO(gender: p.gender, age: p.age, weightKg: p.weightKg,
+                heightCm: p.heightCm, goalsText: p.goalsText,
+                updatedAt: Self.ms(p.updatedAt), deletedAt: p.deletedAt.map(Self.ms))
+        }
+
+        var normsDTO: SyncNormsDTO?
+        if let n = getDailyNorms(), n.updatedAt > sinceDate {
+            normsDTO = SyncNormsDTO(nutrientsJson: n.nutrientsJson,
+                updatedAt: Self.ms(n.updatedAt), deletedAt: n.deletedAt.map(Self.ms))
+        }
+
+        let entriesDesc = FetchDescriptor<FoodEntry>(predicate: #Predicate { $0.updatedAt > sinceDate })
+        let entries = ((try? context.fetch(entriesDesc)) ?? []).map { e in
+            SyncEntryDTO(clientId: e.clientId, date: e.date, foodName: e.foodName,
+                foodNameEn: e.foodNameEn, weightGrams: e.weightGrams, nutrientsJson: e.nutrientsJson,
+                source: e.source, fromCache: e.fromCache, createdAt: Self.ms(e.createdAt),
+                updatedAt: Self.ms(e.updatedAt), deletedAt: e.deletedAt.map(Self.ms))
+        }
+
+        let cacheDesc = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.updatedAt > sinceDate })
+        let cache = ((try? context.fetch(cacheDesc)) ?? []).map { c in
+            SyncCacheDTO(keyNormalized: c.keyNormalized, keyOriginal: c.keyOriginal, keyEn: c.keyEn,
+                keyEnNormalized: c.keyEnNormalized, nutrientsJson: c.nutrientsPer100gJson,
+                createdAt: Self.ms(c.createdAt), updatedAt: Self.ms(c.updatedAt),
+                deletedAt: c.deletedAt.map(Self.ms))
+        }
+
+        return SyncPushRequest(profile: profileDTO, norms: normsDTO, entries: entries, foodCache: cache)
+    }
+
+    /// Применить данные с сервера (last-write-wins по updatedAt).
+    func applyPulled(_ resp: SyncPullResponse) {
+        // Profile (1 ряд)
+        if let dto = resp.profile {
+            let existing = getProfile()
+            if existing == nil || Self.date(dto.updatedAt) >= (existing!.updatedAt) {
+                if let e = existing { context.delete(e) }
+                let p = UserProfile(gender: dto.gender, age: dto.age, weightKg: dto.weightKg,
+                    heightCm: dto.heightCm, goalsText: dto.goalsText)
+                p.updatedAt = Self.date(dto.updatedAt)
+                p.deletedAt = dto.deletedAt.map(Self.date)
+                context.insert(p)
+            }
+        }
+        // Norms (1 ряд)
+        if let dto = resp.norms {
+            let existing = getDailyNorms()
+            if existing == nil || Self.date(dto.updatedAt) >= (existing!.updatedAt) {
+                if let e = existing { context.delete(e) }
+                let n = DailyNorms(nutrientsJson: dto.nutrientsJson)
+                n.updatedAt = Self.date(dto.updatedAt)
+                n.deletedAt = dto.deletedAt.map(Self.date)
+                context.insert(n)
+            }
+        }
+        // Food entries (по clientId)
+        for dto in resp.entries {
+            let cid = dto.clientId
+            let desc = FetchDescriptor<FoodEntry>(predicate: #Predicate { $0.clientId == cid })
+            let existing = try? context.fetch(desc).first
+            if let e = existing ?? nil {
+                if Self.date(dto.updatedAt) >= e.updatedAt {
+                    e.date = dto.date; e.foodName = dto.foodName; e.foodNameEn = dto.foodNameEn
+                    e.weightGrams = dto.weightGrams; e.nutrientsJson = dto.nutrientsJson
+                    e.source = dto.source; e.fromCache = dto.fromCache
+                    e.updatedAt = Self.date(dto.updatedAt); e.deletedAt = dto.deletedAt.map(Self.date)
+                }
+            } else {
+                let e = FoodEntry(date: dto.date, foodName: dto.foodName, foodNameEn: dto.foodNameEn,
+                    weightGrams: dto.weightGrams, nutrientsJson: dto.nutrientsJson,
+                    source: dto.source, fromCache: dto.fromCache)
+                e.clientId = dto.clientId
+                if let c = dto.createdAt { e.createdAt = Self.date(c) }
+                e.updatedAt = Self.date(dto.updatedAt); e.deletedAt = dto.deletedAt.map(Self.date)
+                context.insert(e)
+            }
+        }
+        // Food cache (по keyNormalized)
+        for dto in resp.foodCache {
+            let key = dto.keyNormalized
+            let desc = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyNormalized == key })
+            let existing = try? context.fetch(desc).first
+            if let c = existing ?? nil {
+                if Self.date(dto.updatedAt) >= c.updatedAt {
+                    c.keyOriginal = dto.keyOriginal; c.keyEn = dto.keyEn
+                    c.keyEnNormalized = dto.keyEnNormalized; c.nutrientsPer100gJson = dto.nutrientsJson
+                    c.updatedAt = Self.date(dto.updatedAt); c.deletedAt = dto.deletedAt.map(Self.date)
+                }
+            } else {
+                let c = FoodCache(keyOriginal: dto.keyOriginal, keyNormalized: dto.keyNormalized,
+                    keyEn: dto.keyEn, keyEnNormalized: dto.keyEnNormalized,
+                    nutrientsPer100gJson: dto.nutrientsJson)
+                if let cr = dto.createdAt { c.createdAt = Self.date(cr) }
+                c.updatedAt = Self.date(dto.updatedAt); c.deletedAt = dto.deletedAt.map(Self.date)
+                context.insert(c)
+            }
         }
         try? context.save()
     }

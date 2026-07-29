@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Кастомный зелёный хедер (как Android TopAppBar): ровный #388E3C, белые иконки БЕЗ
+// Кастомный зелёный хедер (как Android TopAppBar): ровный брендовый зелёный (AppColor.primary #1B9E3E), белые иконки БЕЗ
 // системных glass-капсул iOS 26. Заменяет системный navigation bar на всех экранах.
 // Использование: обернуть контент в VStack(spacing:0){ BrandHeader(...) ; content }
 // и скрыть системный бар через .navigationBarHidden(true).
@@ -29,9 +29,10 @@ struct BrandHeader<Leading: View, Trailing: View>: View {
             }
         }
         .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity)
         .frame(height: 44)
         .padding(.top, 8)
         .padding(.bottom, 8)
-        .background(NutritionTrackerApp.brandGreen)
+        .background(AppColor.primary)
     }
 }

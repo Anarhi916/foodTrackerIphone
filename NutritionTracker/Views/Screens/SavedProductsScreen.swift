@@ -59,7 +59,7 @@ struct SavedProductsScreen: View {
                 }
             }
             .padding(10)
-            .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray5)))
+            .background(RoundedRectangle(cornerRadius: 10).fill(AppColor.surfaceVariant))
             .padding(.horizontal)
             .padding(.top, 8)
 
@@ -100,18 +100,18 @@ struct SavedProductsScreen: View {
                         Text("Обогащаем данные...").font(.subheadline)
                     }
                     .padding(24)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemBackground)))
+                    .background(RoundedRectangle(cornerRadius: 12).fill(AppColor.surface))
                 }
             }
         }
-        .background(Color(.systemGray6))
+        .background(AppColor.background)
         .navigationBarHidden(true)
         .alert("Удалить все продукты?", isPresented: $showDeleteAllAlert) {
             Button("Удалить всё", role: .destructive) { viewModel.deleteAllCachedFoods() }
-            Button("Только штрих-коды", role: .destructive) { viewModel.deleteAllBarcodeAndSupplementEntries() }
+            Button("Только штрих-коды", role: .destructive) { viewModel.deleteAllBarcodeEntries() }
             Button("Отмена", role: .cancel) {}
         } message: {
-            Text("Удалить все сохранённые продукты или только добавленные по штрих-коду и БАД?")
+            Text("Удалить все сохранённые продукты или только добавленные по штрих-коду?")
         }
         .alert("Удалить?", isPresented: Binding(
             get: { deleteEntry != nil },
@@ -214,7 +214,7 @@ struct SavedProductsScreen: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Button { quickAddWeight = "100"; quickAddEntry = entry } label: {
-                Image(systemName: "plus.circle.fill").font(.title3).foregroundColor(.blue)
+                Image(systemName: "plus.circle.fill").font(.title3).foregroundColor(AppColor.primary)
             }
             .buttonStyle(.plain)
 
@@ -226,7 +226,7 @@ struct SavedProductsScreen: View {
             Button {
                 shareChooserEntry = entry
             } label: {
-                Image(systemName: "square.and.arrow.up").font(.title3).foregroundColor(.blue)
+                Image(systemName: "square.and.arrow.up").font(.title3).foregroundColor(AppColor.primary)
             }
             .buttonStyle(.plain)
 
@@ -236,7 +236,7 @@ struct SavedProductsScreen: View {
             .buttonStyle(.plain)
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray5)))
+        .cardStyle()
     }
 }
 
@@ -288,6 +288,7 @@ struct AddCachedFoodSheet: View {
                         .disabled(nameRu.trimmingCharacters(in: .whitespaces).isEmpty || nameEn.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
+            .sheetChrome()
         }
     }
 
@@ -355,6 +356,7 @@ struct EditCachedFoodSheet: View {
                         .disabled(nameRu.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
+            .sheetChrome()
         }
         .onAppear {
             nameRu = entry.keyOriginal
@@ -459,7 +461,7 @@ struct AddCustomDishSheet: View {
                     Color.black.opacity(0.2).ignoresSafeArea()
                     ProgressView("Анализ ингредиентов...")
                         .padding()
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemBackground)))
+                        .background(RoundedRectangle(cornerRadius: 12).fill(AppColor.surface))
                         .shadow(radius: 4)
                 }
             }
@@ -475,6 +477,7 @@ struct AddCustomDishSheet: View {
                         .disabled(!canSave)
                 }
             }
+            .sheetChrome()
         }
     }
 
@@ -502,7 +505,7 @@ struct AddCustomDishSheet: View {
                     set: { ingredients[idx].name = $0; ingredients[idx].cachedFood = nil }
                 ))
                 .textFieldStyle(.roundedBorder)
-                .foregroundColor(ing.cachedFood != nil ? .blue : .primary)
+                .foregroundColor(ing.cachedFood != nil ? AppColor.primary : .primary)
                 .focused($focusedIngredient, equals: idx)
 
                 TextField("г", text: Binding(
@@ -517,7 +520,7 @@ struct AddCustomDishSheet: View {
                     Button { addIngredient() } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
-                            .foregroundColor(.green)
+                            .foregroundColor(AppColor.primary)
                     }
                     .buttonStyle(.plain)
                 } else {
@@ -560,7 +563,7 @@ struct AddCustomDishSheet: View {
                         }
                     }
                 }
-                .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray5)))
+                .background(RoundedRectangle(cornerRadius: 8).fill(AppColor.surfaceContainerHigh))
                 .padding(.trailing, 78)
             }
         }
@@ -654,6 +657,7 @@ struct QrShareSheet: View {
                     Button("Закрыть") { dismiss() }
                 }
             }
+            .sheetChrome()
         }
     }
 }

@@ -83,7 +83,7 @@ struct StatisticsScreen: View {
                 }
                 .padding(16)
             }
-            .background(Color(.systemGray6))
+            .background(AppColor.background)
         }
         .navigationBarHidden(true)
         .onAppear { loadData() }
@@ -150,7 +150,7 @@ struct StatisticsScreen: View {
             .buttonStyle(.bordered)
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray5)))
+        .cardStyle(AppColor.surfaceContainerHigh, elevation: 2)
     }
 
     private func exportCSV() {
@@ -225,7 +225,7 @@ private struct NutrientStatCard: View {
                 }()
                 let pctColor: Color = {
                     guard let p = pct else { return .primary }
-                    if p >= 90 { return NutritionTrackerApp.brandGreen }
+                    if p >= 90 { return AppColor.primary }
                     if p >= 50 { return .primary }
                     return .red
                 }()
@@ -241,7 +241,7 @@ private struct NutrientStatCard: View {
             }
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray5)))
+        .cardStyle()
     }
 
     private func formatNutrientValue(_ value: Double) -> String {
@@ -275,6 +275,7 @@ private struct DatePickerSheet: View {
                         Button("OK") { onDone() }
                     }
                 }
+                .sheetChrome()
         }
     }
 }

@@ -7,7 +7,7 @@ private let logger = Logger(subsystem: "com.nutrition.tracker", category: "Repos
 // Вся многошаговая AI/USDA-логика переехала на сервер (см. backend/ARCHITECTURE.md).
 // Что осталось локально: SwiftData (профиль, нормы, записи, кэш), WeightParser,
 // пересчёт на вес, сохранённые продукты, UX-диалоги (в MainViewModel).
-// Backend возвращает нутриенты на 100г (кроме supplement — на порцию); клиент масштабирует.
+// Backend возвращает нутриенты на 100г; клиент масштабирует.
 @MainActor
 class NutritionRepository {
     static let shared = NutritionRepository()
@@ -79,7 +79,7 @@ class NutritionRepository {
 
     func deleteAllCachedFoods() { db.deleteAllCachedFoods() }
 
-    func deleteAllBarcodeAndSupplementEntries() { db.deleteAllBarcodeAndSupplementEntries() }
+    func deleteAllBarcodeEntries() { db.deleteAllBarcodeEntries() }
 
     func addManualCachedFood(nameRu: String, nameEn: String, nutrients: NutrientData) {
         db.saveToCache(keyOriginal: nameRu, keyEn: nameEn, nutrientsPer100g: nutrients)
@@ -208,31 +208,6 @@ class NutritionRepository {
         db.saveToCache(keyOriginal: "barcode:\(barcode)", keyEn: name, nutrientsPer100g: enriched.nutrientsPer100g)
 
         return (name, enriched.nutrientsPer100g, false)
-    }
-
-    // MARK: - Supplement (БАД)
-
-    /// БАД: локальный кэш → клиент сам идёт в OFF (имя+порция) → backend считает на порцию.
-    func lookupSupplementBarcode(_ barcode: String) async throws -> SupplementResult? {
-        let cacheKey = "supplement:\(barcode)"
-        if let cached = db.findInCache(key: cacheKey) {
-            let nutrients = db.parseNutrients(cached.nutrientsPer100gJson) ?? NutrientData()
-            let servingSize = cached.keyOriginal.replacingOccurrences(of: "supplement:\(barcode):", with: "")
-            return SupplementResult(name: cached.keyEn, nutrientsPerServing: nutrients, servingSize: servingSize.isEmpty ? String(localized: "1 порция") : servingSize, fromCache: true)
-        }
-
-        let response = try await network.lookupBarcode(barcode)
-        guard let product = response.product else { return nil }
-        let name = [product.productNameRu, product.productNameUk, product.productNameEn, product.productName, product.brands]
-            .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
-            .first(where: { !$0.isEmpty }) ?? String(localized: "Пищевая добавка")
-        let servingSize = product.servingSize ?? String(localized: "1 порция")
-
-        let res = try await network.analyzeSupplement(name: name, servingSize: servingSize, barcode: barcode)
-
-        db.saveToCache(keyOriginal: "supplement:\(barcode):\(servingSize)", keyEn: name, nutrientsPer100g: res.nutrientsPerServing)
-
-        return SupplementResult(name: name, nutrientsPerServing: res.nutrientsPerServing, servingSize: servingSize, fromCache: false)
     }
 
     /// Обогащение микронутриентов через backend /v1/food/enrich (используется в фото-потоке

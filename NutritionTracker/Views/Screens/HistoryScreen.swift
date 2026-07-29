@@ -9,7 +9,7 @@ struct HistoryScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             BrandHeader(
-                String(localized: "История (14 дней)"),
+                String(localized: "История"),
                 leading: {
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
@@ -19,7 +19,7 @@ struct HistoryScreen: View {
             ScrollView {
                 VStack(spacing: 12) {
                     if allDates.isEmpty {
-                        Text("Нет данных за последние 14 дней")
+                        Text("Нет данных")
                             .foregroundColor(.secondary)
                             .padding(.top, 40)
                     } else {
@@ -30,10 +30,10 @@ struct HistoryScreen: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGray6))
+            .background(AppColor.background)
         }
         .navigationBarHidden(true)
-        .onAppear { allDates = NutritionRepository.shared.getRecentDates() }
+        .onAppear { allDates = NutritionRepository.shared.getAllDates() }
     }
 
     private func dayCard(for date: String) -> some View {
@@ -108,7 +108,7 @@ struct HistoryScreen: View {
             }
         }
         .padding()
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray5)).shadow(color: .black.opacity(0.08), radius: 3, y: 1))
+        .cardStyle()
     }
 
     private func summaryChip(_ label: String, value: String) -> some View {
@@ -118,17 +118,17 @@ struct HistoryScreen: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 6)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray4).opacity(0.5)))
+        .background(RoundedRectangle(cornerRadius: 8).fill(AppColor.surfaceVariant))
     }
 
     private func historyProgressBar(name: String, value: Double, target: Double, unit: String, upperRatio: Double) -> some View {
         let pct = target > 0 ? value / target : 0
         let color: Color = {
-            if pct > upperRatio * 1.3 { return .red }
-            if pct > upperRatio { return .orange }
-            if pct >= 0.8 { return .green }
-            if pct >= 0.4 { return .yellow }
-            return .red
+            if pct > upperRatio * 1.3 { return AppColor.progressRed }
+            if pct > upperRatio { return AppColor.progressOrange }
+            if pct >= 0.8 { return AppColor.progressGreen }
+            if pct >= 0.4 { return AppColor.progressYellow }
+            return AppColor.progressRed
         }()
         return VStack(alignment: .leading, spacing: 2) {
             HStack {
@@ -139,7 +139,7 @@ struct HistoryScreen: View {
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 3).fill(Color(.systemGray4)).frame(height: 6)
+                    RoundedRectangle(cornerRadius: 3).fill(AppColor.surfaceVariant).frame(height: 6)
                     RoundedRectangle(cornerRadius: 3).fill(color)
                         .frame(width: min(CGFloat(pct) * geo.size.width, geo.size.width), height: 6)
                 }

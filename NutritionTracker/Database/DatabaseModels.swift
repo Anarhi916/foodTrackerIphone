@@ -1,6 +1,10 @@
 import Foundation
 import SwiftData
 
+// Поля синхронизации (updatedAt/deletedAt) есть у всех моделей — см. sync-architecture.
+// FoodEntry дополнительно несёт clientId (uuid) — идемпотентный ключ на бэкенде.
+// SwiftData делает lightweight-миграцию автоматически (новые свойства со значениями по умолчанию).
+
 @Model
 final class UserProfile {
     var gender: String
@@ -9,6 +13,8 @@ final class UserProfile {
     var heightCm: Double
     var goalsText: String
     var createdAt: Date
+    var updatedAt: Date = Date()
+    var deletedAt: Date?
 
     init(gender: String, age: Int, weightKg: Double, heightCm: Double, goalsText: String) {
         self.gender = gender
@@ -17,6 +23,7 @@ final class UserProfile {
         self.heightCm = heightCm
         self.goalsText = goalsText
         self.createdAt = Date()
+        self.updatedAt = Date()
     }
 }
 
@@ -24,15 +31,19 @@ final class UserProfile {
 final class DailyNorms {
     var nutrientsJson: String
     var createdAt: Date
+    var updatedAt: Date = Date()
+    var deletedAt: Date?
 
     init(nutrientsJson: String) {
         self.nutrientsJson = nutrientsJson
         self.createdAt = Date()
+        self.updatedAt = Date()
     }
 }
 
 @Model
 final class FoodEntry {
+    var clientId: String = UUID().uuidString
     var date: String
     var foodName: String
     var foodNameEn: String = ""
@@ -41,8 +52,11 @@ final class FoodEntry {
     var source: String
     var fromCache: Bool
     var createdAt: Date
+    var updatedAt: Date = Date()
+    var deletedAt: Date?
 
     init(date: String, foodName: String, foodNameEn: String = "", weightGrams: Double, nutrientsJson: String, source: String = "manual", fromCache: Bool = false) {
+        self.clientId = UUID().uuidString
         self.date = date
         self.foodName = foodName
         self.foodNameEn = foodNameEn
@@ -51,6 +65,7 @@ final class FoodEntry {
         self.source = source
         self.fromCache = fromCache
         self.createdAt = Date()
+        self.updatedAt = Date()
     }
 }
 
@@ -64,6 +79,8 @@ final class FoodCache {
     var keyEnNormalized: String = ""
     var nutrientsPer100gJson: String
     var createdAt: Date
+    var updatedAt: Date = Date()
+    var deletedAt: Date?
 
     init(keyOriginal: String, keyNormalized: String, keyEn: String, keyEnNormalized: String = "", nutrientsPer100gJson: String) {
         self.keyOriginal = keyOriginal
@@ -72,5 +89,6 @@ final class FoodCache {
         self.keyEnNormalized = keyEnNormalized
         self.nutrientsPer100gJson = nutrientsPer100gJson
         self.createdAt = Date()
+        self.updatedAt = Date()
     }
 }

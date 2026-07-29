@@ -3,7 +3,6 @@ import AVFoundation
 
 enum BarcodeScanMode {
     case food
-    case supplement
 }
 
 struct BarcodeScannerScreen: View {
@@ -37,12 +36,7 @@ struct BarcodeScannerScreen: View {
                     guard scannedBarcode == nil else { return }
                     readyToScan = false
                     scannedBarcode = barcode
-                    switch mode {
-                    case .food:
-                        viewModel.onBarcodeScanned(barcode)
-                    case .supplement:
-                        viewModel.onSupplementBarcodeScanned(barcode)
-                    }
+                    viewModel.onBarcodeScanned(barcode)
                     dismiss()
                 }
                 .ignoresSafeArea()
@@ -58,7 +52,7 @@ struct BarcodeScannerScreen: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(readyToScan ? Color.green : Color.blue)
+                        .background(readyToScan ? Color.green : AppColor.primary)
                         .cornerRadius(14)
                         .padding(.horizontal, 32)
                     }
@@ -67,7 +61,7 @@ struct BarcodeScannerScreen: View {
                 }
             }
         }
-        .navigationTitle(mode == .food ? "Сканер штрих-кода" : "Сканер БАД")
+        .navigationTitle("Сканер штрих-кода")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { checkCameraPermission() }
     }

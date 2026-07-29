@@ -44,12 +44,6 @@ class MainViewModel: ObservableObject {
     @Published var photoNutrientsPer100g: NutrientData?
     @Published var photoFoodNameEn: String = ""
 
-    @Published var showSupplementDialog: Bool = false
-    @Published var supplementName: String?
-    @Published var supplementNutrientsPerServing: NutrientData?
-    @Published var supplementServingSize: String = ""
-    @Published var supplementServings: String = "1"
-
     private var refreshTimer: Timer?
 
     init() {
@@ -224,48 +218,6 @@ class MainViewModel: ObservableObject {
         barcodeNutrientsPer100g = nil
     }
 
-    // MARK: - Supplement
-
-    func onSupplementBarcodeScanned(_ barcode: String) {
-        isLoading = true
-        errorMessage = nil
-        Task {
-            do {
-                if let result = try await repo.lookupSupplementBarcode(barcode) {
-                    supplementName = result.name
-                    supplementNutrientsPerServing = result.nutrientsPerServing
-                    supplementServingSize = result.servingSize
-                    supplementServings = "1"
-                    showSupplementDialog = true
-                } else {
-                    errorMessage = String(format: String(localized: "БАД не найден по штрих-коду: %@"), barcode)
-                }
-                isLoading = false
-            } catch {
-                isLoading = false
-                errorMessage = String(format: String(localized: "Ошибка поиска БАД: %@"), error.localizedDescription)
-            }
-        }
-    }
-
-    func confirmSupplementAdd() {
-        guard let name = supplementName,
-              let perServing = supplementNutrientsPerServing,
-              let servings = Double(supplementServings) else { return }
-        let nutrients = perServing * servings
-        repo.addFoodEntry(foodName: "💊 \(name)", weightGrams: servings, nutrients: nutrients, source: "supplement", fromCache: true)
-        showSupplementDialog = false
-        supplementName = nil
-        supplementNutrientsPerServing = nil
-        refreshTodayData()
-    }
-
-    func dismissSupplementDialog() {
-        showSupplementDialog = false
-        supplementName = nil
-        supplementNutrientsPerServing = nil
-    }
-
     // MARK: - Photo
 
     func analyzePhoto(_ imageData: Data) {
@@ -387,8 +339,8 @@ class MainViewModel: ObservableObject {
         cachedFoods = []
     }
 
-    func deleteAllBarcodeAndSupplementEntries() {
-        repo.deleteAllBarcodeAndSupplementEntries()
+    func deleteAllBarcodeEntries() {
+        repo.deleteAllBarcodeEntries()
         cachedFoods = repo.getAllCachedFoods()
     }
 

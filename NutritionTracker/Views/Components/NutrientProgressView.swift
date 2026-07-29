@@ -76,7 +76,7 @@ struct NutrientProgressSection: View {
             }
         }
         .padding()
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray5)).shadow(color: .black.opacity(0.08), radius: 3, y: 1))
+        .cardStyle()
         .sheet(item: $breakdownNutrient) { item in
             NutrientBreakdownSheet(
                 nutrientKey: item.key,
@@ -115,11 +115,11 @@ struct NutrientProgressBar: View {
 
     private var progressColor: Color {
         let ratio = percentage
-        if ratio > effectiveUpperRatio * 1.3 { return .red }
-        if ratio > effectiveUpperRatio { return .orange }
-        if ratio >= 0.8 { return .green }
-        if ratio >= 0.4 { return .yellow }
-        return .red
+        if ratio > effectiveUpperRatio * 1.3 { return AppColor.progressRed }
+        if ratio > effectiveUpperRatio { return AppColor.progressOrange }
+        if ratio >= 0.8 { return AppColor.progressGreen }
+        if ratio >= 0.4 { return AppColor.progressYellow }
+        return AppColor.progressRed
     }
 
     private var displayPercentage: String {
@@ -132,7 +132,7 @@ struct NutrientProgressBar: View {
                 if hasTopFoods {
                     Image(systemName: "info.circle")
                         .font(.system(size: 13))
-                        .foregroundColor(Color(red: 0x38/255, green: 0x8E/255, blue: 0x3C/255).opacity(0.6))
+                        .foregroundColor(AppColor.primary.opacity(0.6))
                         .onTapGesture { onInfoTap() }
                 }
                 Text(name).font(.caption).lineLimit(1)
@@ -145,7 +145,7 @@ struct NutrientProgressBar: View {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(.systemGray5))
+                        .fill(AppColor.surfaceVariant)
                         .frame(height: 8)
                     RoundedRectangle(cornerRadius: 4)
                         .fill(progressColor)
@@ -198,7 +198,7 @@ struct NutrientBreakdownSheet: View {
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 10)
-                    .background(Color(.systemGray5))
+                    .background(AppColor.surfaceContainerHigh)
 
                     ScrollView {
                         VStack(spacing: 0) {
@@ -235,12 +235,12 @@ struct NutrientBreakdownSheet: View {
                             }
                             .padding(.horizontal)
                             .padding(.vertical, 10)
-                            .background(Color(.systemGray5))
+                            .background(AppColor.surfaceContainerHigh)
                         }
                     }
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .background(AppColor.background)
             .navigationTitle(nutrientName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -248,6 +248,7 @@ struct NutrientBreakdownSheet: View {
                     Button("Закрыть") { dismiss() }
                 }
             }
+            .sheetChrome()
         }
         .presentationDetents([.medium])
         .presentationBackground(.thickMaterial)
@@ -306,7 +307,7 @@ struct NutrientTopFoodsSheet: View {
                     Spacer()
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .background(AppColor.background)
             .navigationTitle("Топ-15: \(nutrientName)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -314,6 +315,7 @@ struct NutrientTopFoodsSheet: View {
                     Button("Закрыть") { dismiss() }
                 }
             }
+            .sheetChrome()
         }
         .presentationDetents([.medium, .large])
         .presentationBackground(.thickMaterial)

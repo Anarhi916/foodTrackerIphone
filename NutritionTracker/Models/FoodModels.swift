@@ -7,10 +7,3 @@ struct FoodAnalysisResult {
     let nutrients: NutrientData
     let fromCache: Bool
 }
-
-struct SupplementResult {
-    let name: String
-    let nutrientsPerServing: NutrientData
-    let servingSize: String
-    let fromCache: Bool
-}

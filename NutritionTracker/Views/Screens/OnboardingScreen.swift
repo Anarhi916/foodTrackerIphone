@@ -95,7 +95,7 @@ struct OnboardingScreen: View {
                     Text("Цели и уровень активности").font(.headline)
                     TextEditor(text: $goals)
                         .frame(minHeight: 100)
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.3)))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(AppColor.outlineVariant))
                 }
 
                 if viewModel.isLoading {
@@ -112,7 +112,7 @@ struct OnboardingScreen: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.green)
+                        .background(AppColor.primary)
                         .cornerRadius(12)
                 }
                 .disabled(viewModel.isLoading)

@@ -20,10 +20,10 @@ struct PhotoCaptureScreen: View {
                 Button(action: analyzePhoto) {
                     Text("Анализировать")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppColor.onPrimary)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.green)
+                        .background(AppColor.primary)
                         .cornerRadius(12)
                 }
                 .disabled(viewModel.isLoading)
@@ -46,20 +46,20 @@ struct PhotoCaptureScreen: View {
                 Button(action: { showCamera = true }) {
                     Label("Камера", systemImage: "camera")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppColor.onPrimary)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
+                        .background(AppColor.primary)
                         .cornerRadius(12)
                 }
 
                 Button(action: { showLibrary = true }) {
                     Label("Галерея", systemImage: "photo")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppColor.onPrimaryContainer)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.purple)
+                        .background(AppColor.primaryContainer)
                         .cornerRadius(12)
                 }
             }

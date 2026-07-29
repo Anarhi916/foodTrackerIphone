@@ -21,7 +21,7 @@ struct LanguagePickerButton: View {
             .font(.subheadline)
             .padding(.vertical, 6)
             .padding(.horizontal, 12)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray6)))
+            .background(RoundedRectangle(cornerRadius: 8).fill(AppColor.surfaceVariant))
         }
         .buttonStyle(.plain)
         .confirmationDialog(String(localized: "Язык"), isPresented: $showPicker, titleVisibility: .visible) {

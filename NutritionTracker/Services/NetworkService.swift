@@ -1,7 +1,7 @@
 import Foundation
 
 // Клиент backend-прокси. Все AI/USDA-вызовы идут на наш сервер (/v1/*).
-// Нутриенты приходят на 100г (кроме supplement — на порцию); клиент масштабирует сам.
+// Нутриенты приходят на 100г; клиент масштабирует сам.
 // См. backend/ARCHITECTURE.md. NutrientData декодируется напрямую (snake_case совпадает).
 actor NetworkService {
     static let shared = NetworkService()
@@ -28,10 +28,24 @@ actor NetworkService {
         // Dev-авторизация. В prod заменяется на App Attest (X-Attest-*).
         req.setValue(APIConfig.devAuthSecret, forHTTPHeaderField: "X-Dev-Auth")
         req.setValue("ios", forHTTPHeaderField: "X-Platform")
+        // Пользовательская сессия (Bearer). auth-эндпоинты (/v1/auth/*) сами не требуют — там nil.
+        if let access = await AuthManager.shared.accessToken {
+            req.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization")
+        }
         req.httpBody = try JSONEncoder().encode(body)
 
-        let (data, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        var (data, response) = try await session.data(for: req)
+        guard var http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+
+        // 401 → пробуем обновить сессию refresh-токеном и повторить один раз.
+        if http.statusCode == 401, await AuthManager.shared.tryRefresh() {
+            if let access = await AuthManager.shared.accessToken {
+                req.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization")
+            }
+            (data, response) = try await session.data(for: req)
+            guard let http2 = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+            http = http2
+        }
         guard http.statusCode == 200 else {
             let bodyStr = String(data: data, encoding: .utf8) ?? ""
             // Пытаемся достать message из {error, message}
@@ -70,18 +84,97 @@ actor NetworkService {
         try await post("/v1/food/enrich", body: EnrichRequest(name: name, nutrientsPer100g: nutrientsPer100g))
     }
 
-    // MARK: - /v1/food/supplement (БАД — OFF-данные от клиента)
-
-    func analyzeSupplement(name: String, servingSize: String, barcode: String) async throws -> SupplementResponse {
-        try await post("/v1/food/supplement", body: SupplementRequest(name: name, servingSize: servingSize, barcode: barcode))
-    }
-
     // MARK: - /v1/norms
 
     func calculateNorms(gender: String, age: Int, weight: Double, height: Double, goals: String) async throws -> NutrientData {
         let body = NormsRequest(gender: gender, age: age, weight: weight, height: height, goals: goals)
         let res: NormsResponse = try await post("/v1/norms", body: body)
         return res.norms
+    }
+
+    // MARK: - Auth (/v1/auth/*) — вход/обновление/выход/удаление.
+    // Отдельный helper: НЕ делает refresh-петлю (иначе рекурсия при логине).
+
+    private func authPost<Req: Encodable, Res: Decodable>(_ path: String, body: Req) async throws -> Res {
+        let url = URL(string: "\(APIConfig.backendBaseURL)\(path)")!
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(APIConfig.devAuthSecret, forHTTPHeaderField: "X-Dev-Auth")
+        req.setValue("ios", forHTTPHeaderField: "X-Platform")
+        req.httpBody = try JSONEncoder().encode(body)
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw APIError.invalidResponse
+        }
+        return try JSONDecoder().decode(Res.self, from: data)
+    }
+
+    func authApple(identityToken: String, nonce: String) async throws -> TokenResponse {
+        try await authPost("/v1/auth/apple", body: AppleAuthRequest(identityToken: identityToken, nonce: nonce))
+    }
+
+    func authGoogle(idToken: String, nonce: String) async throws -> TokenResponse {
+        try await authPost("/v1/auth/google", body: GoogleAuthRequest(idToken: idToken, nonce: nonce))
+    }
+
+    func authGoogleCode(code: String, codeVerifier: String, redirectUri: String, clientId: String) async throws -> TokenResponse {
+        try await authPost("/v1/auth/google", body: GoogleCodeRequest(
+            code: code, codeVerifier: codeVerifier, redirectUri: redirectUri, clientId: clientId
+        ))
+    }
+
+    func refreshSession(refreshToken: String) async throws -> TokenResponse {
+        try await authPost("/v1/auth/refresh", body: RefreshRequest(refreshToken: refreshToken))
+    }
+
+    func logout(refreshToken: String) async {
+        _ = try? await authPost("/v1/auth/logout", body: RefreshRequest(refreshToken: refreshToken)) as OkResponse
+    }
+
+    func deleteAccount(accessToken: String) async throws {
+        let url = URL(string: "\(APIConfig.backendBaseURL)/v1/auth/account")!
+        var req = URLRequest(url: url)
+        req.httpMethod = "DELETE"
+        req.setValue(APIConfig.devAuthSecret, forHTTPHeaderField: "X-Dev-Auth")
+        req.setValue("ios", forHTTPHeaderField: "X-Platform")
+        req.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        let (_, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw APIError.invalidResponse
+        }
+    }
+
+    // MARK: - Sync (/v1/sync/*)
+
+    func syncPush(_ payload: SyncPushRequest) async throws -> SyncPushResponse {
+        try await post("/v1/sync/push", body: payload)
+    }
+
+    func syncPull(since: Int64?) async throws -> SyncPullResponse {
+        var urlStr = "\(APIConfig.backendBaseURL)/v1/sync/pull"
+        if let since { urlStr += "?since=\(since)" }
+        let url = URL(string: urlStr)!
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.timeoutInterval = 60
+        req.setValue(APIConfig.devAuthSecret, forHTTPHeaderField: "X-Dev-Auth")
+        req.setValue("ios", forHTTPHeaderField: "X-Platform")
+        if let access = await AuthManager.shared.accessToken {
+            req.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization")
+        }
+        var (data, response) = try await session.data(for: req)
+        guard var http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        if http.statusCode == 401, await AuthManager.shared.tryRefresh() {
+            if let access = await AuthManager.shared.accessToken {
+                req.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization")
+            }
+            (data, response) = try await session.data(for: req)
+            guard let http2 = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+            http = http2
+        }
+        guard http.statusCode == 200 else { throw APIError.invalidResponse }
+        return try JSONDecoder().decode(SyncPullResponse.self, from: data)
     }
 
     // MARK: - OpenFoodFacts (штрихкод — остаётся на клиенте, свой IP)
@@ -152,18 +245,6 @@ struct EnrichResponse: Decodable {
     let nutrientsPer100g: NutrientData
 }
 
-struct SupplementRequest: Encodable {
-    let name: String
-    let servingSize: String
-    let barcode: String
-}
-
-struct SupplementResponse: Decodable {
-    let name: String
-    let servingSize: String
-    let nutrientsPerServing: NutrientData
-}
-
 struct NormsRequest: Encodable {
     let gender: String
     let age: Int
@@ -179,6 +260,39 @@ struct NormsResponse: Decodable {
 struct BackendError: Decodable {
     let error: String?
     let message: String?
+}
+
+// MARK: - Auth модели
+
+struct AppleAuthRequest: Encodable {
+    let identityToken: String
+    let nonce: String
+}
+
+struct GoogleAuthRequest: Encodable {
+    let idToken: String
+    let nonce: String
+}
+
+struct GoogleCodeRequest: Encodable {
+    let code: String
+    let codeVerifier: String
+    let redirectUri: String
+    let clientId: String
+}
+
+struct RefreshRequest: Encodable {
+    let refreshToken: String
+}
+
+struct TokenResponse: Decodable {
+    let accessToken: String
+    let refreshToken: String
+    let expiresIn: Int
+}
+
+struct OkResponse: Decodable {
+    let ok: Bool
 }
 
 // MARK: - Errors

@@ -2,8 +2,11 @@ import SwiftUI
 
 struct EditProfileScreen: View {
     @ObservedObject var viewModel: MainViewModel
+    @EnvironmentObject var auth: AuthManager
+    @StateObject private var sync = SyncManager.shared
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTab = 0
+    @State private var isSyncing = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -12,6 +15,36 @@ struct EditProfileScreen: View {
                 leading: {
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
+                    }
+                },
+                trailing: {
+                    HStack(spacing: 16) {
+                        // Принудительная синхронизация (push + pull).
+                        Button(action: {
+                            guard !isSyncing else { return }
+                            Task {
+                                isSyncing = true
+                                await sync.forceSyncNow()
+                                viewModel.loadData()
+                                isSyncing = false
+                            }
+                        }) {
+                            if isSyncing {
+                                ProgressView().tint(.white)
+                            } else {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                        }
+                        Button(action: {
+                            Task {
+                                await auth.signOut()
+                                dismiss()
+                            }
+                        }) {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                                .font(.system(size: 18, weight: .semibold))
+                        }
                     }
                 }
             )
@@ -29,7 +62,7 @@ struct EditProfileScreen: View {
                 DailyNormsTab(viewModel: viewModel)
             }
         }
-        .background(Color(.systemGray6))
+        .background(AppColor.background)
         .navigationBarHidden(true)
     }
 }
@@ -38,6 +71,7 @@ struct EditProfileScreen: View {
 
 private struct ProfileDataTab: View {
     @ObservedObject var viewModel: MainViewModel
+    @EnvironmentObject var auth: AuthManager
     let dismiss: DismissAction
     @State private var gender: Gender = .male
     @State private var age: String = ""
@@ -80,7 +114,7 @@ private struct ProfileDataTab: View {
                         Button(action: { gender = .male }) {
                             HStack(spacing: 6) {
                                 Image(systemName: gender == .male ? "largecircle.fill.circle" : "circle")
-                                    .foregroundColor(gender == .male ? NutritionTrackerApp.brandGreen : .gray)
+                                    .foregroundColor(gender == .male ? AppColor.primary : .gray)
                                 Text("Мужской")
                             }
                         }
@@ -88,7 +122,7 @@ private struct ProfileDataTab: View {
                         Button(action: { gender = .female }) {
                             HStack(spacing: 6) {
                                 Image(systemName: gender == .female ? "largecircle.fill.circle" : "circle")
-                                    .foregroundColor(gender == .female ? NutritionTrackerApp.brandGreen : .gray)
+                                    .foregroundColor(gender == .female ? AppColor.primary : .gray)
                                 Text("Женский")
                             }
                         }
@@ -132,7 +166,7 @@ private struct ProfileDataTab: View {
                     Text("Цели и уровень активности").font(.headline)
                     TextEditor(text: $goals)
                         .frame(minHeight: 100)
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.3)))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(AppColor.outlineVariant))
                 }
 
                 if viewModel.isLoading {
@@ -146,10 +180,10 @@ private struct ProfileDataTab: View {
                 Button(action: submit) {
                     Text("Сохранить и пересчитать")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppColor.onPrimary)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.green)
+                        .background(AppColor.primary)
                         .cornerRadius(12)
                 }
                 .disabled(viewModel.isLoading)
@@ -317,7 +351,7 @@ private struct DailyNormsTab: View {
             }
         }
         .padding()
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray5)).shadow(color: .black.opacity(0.08), radius: 3, y: 1))
+        .cardStyle()
     }
 
     private func editBinding(for key: String) -> Binding<String> {

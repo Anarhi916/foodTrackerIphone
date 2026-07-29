@@ -28,6 +28,14 @@
 				<string>nutritrack</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.nutrition.tracker.googlesignin</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.634452098876-85n6iabtmhsjm12vqpkdmruk2g72qaq8</string>
+			</array>
+		</dict>
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Камера используется для сканирования штрих-кодов и фотографирования еды</string>

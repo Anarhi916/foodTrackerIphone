@@ -14,4 +14,10 @@ struct APIConfig {
 
     // MARK: - OpenFoodFacts (штрихкод — остаётся на клиенте)
     static let openFoodFactsBaseURL = "https://world.openfoodfacts.org"
+
+    // MARK: - Google Sign-In (OAuth web flow через ASWebAuthenticationSession)
+    // iOS OAuth client ID из Google Cloud Console. Reversed-client-ID — это URL-scheme.
+    static let googleClientId = "634452098876-85n6iabtmhsjm12vqpkdmruk2g72qaq8.apps.googleusercontent.com"
+    // reversed client id для redirect
+    static let googleRedirectScheme = "com.googleusercontent.apps.634452098876-85n6iabtmhsjm12vqpkdmruk2g72qaq8"
 }

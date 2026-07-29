@@ -72,7 +72,7 @@ struct MainScreen: View {
                     }
                     .padding()
                 }
-                .background(Color(.systemGray6))
+                .background(AppColor.background)
             }
             .navigationBarHidden(true)
             .overlay {
@@ -84,7 +84,7 @@ struct MainScreen: View {
                             Text("Анализируем…").font(.subheadline)
                         }
                         .padding(24)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemBackground)))
+                        .background(RoundedRectangle(cornerRadius: 12).fill(AppColor.surface))
                     }
                 }
             }
@@ -100,9 +100,6 @@ struct MainScreen: View {
         }
         .sheet(isPresented: $viewModel.showPhotoEditDialog) {
             photoEditSheet
-        }
-        .sheet(isPresented: $viewModel.showSupplementDialog) {
-            supplementSheet
         }
         .alert("Добавить в приём пищи", isPresented: Binding(
             get: { quickAddEntry != nil },
@@ -144,9 +141,6 @@ struct MainScreen: View {
         }.prefix(5).map { $0 }
     }
 
-    // Акцентный зелёный как на Android (#388E3C).
-    private var brandGreen: Color { Color(red: 0x38/255, green: 0x8E/255, blue: 0x3C/255) }
-
     private var foodInputSection: some View {
         VStack(spacing: 8) {
             // Многострочное поле ввода (2-3 строки), как на Android.
@@ -157,12 +151,17 @@ struct MainScreen: View {
                 .padding(.vertical, 12)
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color(.secondarySystemBackground))
+                        .fill(AppColor.surface)
                 )
                 .overlay(
+                    // Рамка как Android OutlinedTextField: серая без фокуса, зелёная (толще) при фокусе.
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color(.separator), lineWidth: 0.5)
+                        .stroke(
+                            foodInputFocused ? AppColor.primary : AppColor.outline,
+                            lineWidth: foodInputFocused ? 2 : 1
+                        )
                 )
+                .animation(.easeInOut(duration: 0.15), value: foodInputFocused)
                 .focused($foodInputFocused)
 
             // Suggestions from cache
@@ -186,7 +185,7 @@ struct MainScreen: View {
                                 }
                                 Spacer()
                                 Image(systemName: "plus.circle.fill")
-                                    .foregroundColor(brandGreen)
+                                    .foregroundColor(AppColor.primary)
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
@@ -197,7 +196,7 @@ struct MainScreen: View {
                         }
                     }
                 }
-                .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray4)))
+                .background(RoundedRectangle(cornerRadius: 12).fill(AppColor.surfaceContainerHigh))
             }
 
             // Широкая кнопка "Добавить" снизу, как на Android.
@@ -209,52 +208,47 @@ struct MainScreen: View {
                     Text("Добавить")
                 }
                 .font(.headline)
-                .foregroundColor(addDisabled ? Color(.systemGray) : .white)
+                .foregroundColor(addDisabled ? AppColor.onDisabled : .white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(RoundedRectangle(cornerRadius: 24).fill(addDisabled ? Color(.systemGray4) : brandGreen))
+                .background(RoundedRectangle(cornerRadius: 24).fill(addDisabled ? AppColor.disabledContainer : AppColor.primary))
             }
             .disabled(addDisabled)
 
-            // 3 равные outlined кнопки-иконки: Штрих-код / БАД / Фото (порядок как Android).
+            // 3 равные outlined кнопки-иконки: Штрих-код / Фото (порядок как Android).
             HStack(spacing: 8) {
                 NavigationLink(destination: BarcodeScannerScreen(viewModel: viewModel, mode: .food)) {
                     Image(systemName: "barcode.viewfinder")
                         .font(.system(size: 20))
-                        .foregroundColor(brandGreen)
+                        .foregroundColor(AppColor.primary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .overlay(RoundedRectangle(cornerRadius: 24).stroke(brandGreen.opacity(0.5), lineWidth: 1))
-                }
-                NavigationLink(destination: BarcodeScannerScreen(viewModel: viewModel, mode: .supplement)) {
-                    Text("💊")
-                        .font(.system(size: 20))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .overlay(RoundedRectangle(cornerRadius: 24).stroke(brandGreen.opacity(0.5), lineWidth: 1))
+                        .padding(.vertical, 9)
+                        .overlay(RoundedRectangle(cornerRadius: 24).stroke(AppColor.primary.opacity(0.5), lineWidth: 1))
                 }
                 NavigationLink(destination: PhotoCaptureScreen(viewModel: viewModel)) {
                     Image(systemName: "camera")
                         .font(.system(size: 20))
-                        .foregroundColor(brandGreen)
+                        .foregroundColor(AppColor.primary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .overlay(RoundedRectangle(cornerRadius: 24).stroke(brandGreen.opacity(0.5), lineWidth: 1))
+                        .padding(.vertical, 9)
+                        .overlay(RoundedRectangle(cornerRadius: 24).stroke(AppColor.primary.opacity(0.5), lineWidth: 1))
                 }
             }
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
+        .cardStyle()
     }
 
     // MARK: - Food Table
 
     private var foodEntriesTable: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Title + Edit button
+            // Заголовок «Сегодня» крупным шрифтом НАД карточкой (как Android headlineMedium).
+            Text("Сегодня")
+                .font(.title2).bold()
+
+            // Кнопка редактирования справа под заголовком (как Android).
             HStack {
-                Text("Сегодня")
-                    .font(.headline)
                 Spacer()
                 if !viewModel.todayEntries.isEmpty {
                     if editMode {
@@ -280,7 +274,7 @@ struct MainScreen: View {
                                 Image(systemName: "pencil")
                                 Text("Редактировать")
                             }
-                            .font(.caption)
+                            .font(.subheadline)
                         }
                     }
                 }
@@ -292,8 +286,9 @@ struct MainScreen: View {
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
+                    .cardStyle()
             } else {
-                // Header
+                // Header — зелёная плашка primaryContainer (как Android).
                 HStack {
                     if editMode {
                         Spacer().frame(width: 24)
@@ -305,7 +300,10 @@ struct MainScreen: View {
                     Text("Ж").font(.caption).bold().frame(width: 30)
                     Text("У").font(.caption).bold().frame(width: 30)
                 }
-                .padding(.horizontal, 4)
+                .foregroundColor(AppColor.onPrimaryContainer)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous).fill(AppColor.primaryContainer))
 
                 ForEach(viewModel.todayEntries, id: \.self) { entry in
                     let nutrients = viewModel.parseNutrients(entry.nutrientsJson)
@@ -342,7 +340,9 @@ struct MainScreen: View {
                         Text(String(format: "%.1f", nutrients.fat)).font(.caption2).lineLimit(1).frame(width: 30)
                         Text(String(format: "%.1f", nutrients.carbs)).font(.caption2).lineLimit(1).frame(width: 30)
                     }
-                    .padding(.horizontal, 4)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous).fill(AppColor.surfaceContainer))
                     .contentShape(Rectangle())
                     .contextMenu {
                         Button("Изменить вес") { viewModel.showEditWeight(for: entry) }
@@ -350,8 +350,7 @@ struct MainScreen: View {
                     }
                 }
 
-                // Totals row
-                Divider()
+                // Totals — зелёная плашка secondaryContainer (как Android).
                 HStack {
                     if editMode {
                         Spacer().frame(width: 24)
@@ -363,11 +362,12 @@ struct MainScreen: View {
                     Text(String(format: "%.1f", viewModel.todayTotals.fat)).font(.caption).bold().lineLimit(1).frame(width: 30)
                     Text(String(format: "%.1f", viewModel.todayTotals.carbs)).font(.caption).bold().lineLimit(1).frame(width: 30)
                 }
-                .padding(.horizontal, 4)
+                .foregroundColor(AppColor.onSecondaryContainer)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous).fill(AppColor.secondaryContainer))
             }
         }
-        .padding()
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray5)).shadow(color: .black.opacity(0.08), radius: 3, y: 1))
         .alert("Удалить?", isPresented: Binding(
             get: { entryToDelete != nil },
             set: { if !$0 { entryToDelete = nil } }
@@ -413,27 +413,32 @@ struct MainScreen: View {
 
     private var macrosSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Макронутриенты").font(.headline)
+            // Заголовок крупным шрифтом НАД карточкой (как Android headlineMedium).
+            Text("Макронутриенты и калории")
+                .font(.title2).bold()
             let nutrients = viewModel.todayTotals.macrosList()
             let norms = viewModel.dailyNorms?.macrosList() ?? []
-            ForEach(Array(zip(nutrients, norms)), id: \.0.key) { (nutrient, norm) in
-                NutrientProgressBar(
-                    key: nutrient.key,
-                    name: nutrient.name,
-                    value: nutrient.value,
-                    target: norm.value,
-                    hasTopFoods: NutrientTopFoods.data[nutrient.key] != nil,
-                    onTap: {
-                        macroBreakdown = IdentifiableNutrient(key: nutrient.key, name: nutrient.name)
-                    },
-                    onInfoTap: {
-                        macroTopFoods = IdentifiableNutrient(key: nutrient.key, name: nutrient.name)
-                    }
-                )
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(zip(nutrients, norms)), id: \.0.key) { (nutrient, norm) in
+                    NutrientProgressBar(
+                        key: nutrient.key,
+                        name: nutrient.name,
+                        value: nutrient.value,
+                        target: norm.value,
+                        hasTopFoods: NutrientTopFoods.data[nutrient.key] != nil,
+                        onTap: {
+                            macroBreakdown = IdentifiableNutrient(key: nutrient.key, name: nutrient.name)
+                        },
+                        onInfoTap: {
+                            macroTopFoods = IdentifiableNutrient(key: nutrient.key, name: nutrient.name)
+                        }
+                    )
+                }
             }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cardStyle()
         }
-        .padding()
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray5)).shadow(color: .black.opacity(0.08), radius: 3, y: 1))
         .sheet(item: $macroBreakdown) { item in
             NutrientBreakdownSheet(
                 nutrientKey: item.key,
@@ -546,6 +551,7 @@ struct MainScreen: View {
                         Button("Добавить") { viewModel.confirmAddFood() }
                     }
                 }
+                .sheetChrome()
             }
         }
         .presentationDetents([.medium, .large])
@@ -577,6 +583,7 @@ struct MainScreen: View {
                     Button("Сохранить") { viewModel.confirmEditWeight() }
                 }
             }
+            .sheetChrome()
         }
         .presentationDetents([.height(200)])
     }
@@ -604,6 +611,7 @@ struct MainScreen: View {
                     Button("Добавить") { viewModel.confirmBarcodeAdd() }
                 }
             }
+            .sheetChrome()
         }
         .presentationDetents([.height(200)])
     }
@@ -637,35 +645,9 @@ struct MainScreen: View {
                     Button("Анализировать") { viewModel.confirmPhotoAnalysis() }
                 }
             }
+            .sheetChrome()
         }
         .presentationDetents([.medium])
     }
 
-    private var supplementSheet: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Text("💊 Найден БАД").font(.headline)
-                Text(viewModel.supplementName ?? "БАД").font(.subheadline).bold()
-                Text("Размер порции: \(viewModel.supplementServingSize)").font(.subheadline).foregroundColor(.secondary)
-                HStack {
-                    Text("Количество порций:")
-                    TextField("", text: $viewModel.supplementServings)
-                        .textFieldStyle(.roundedBorder)
-                        .keyboardType(.numberPad)
-                        .frame(width: 60)
-                }
-                Spacer()
-            }
-            .padding()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") { viewModel.dismissSupplementDialog() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Добавить") { viewModel.confirmSupplementAdd() }
-                }
-            }
-        }
-        .presentationDetents([.height(280)])
-    }
 }

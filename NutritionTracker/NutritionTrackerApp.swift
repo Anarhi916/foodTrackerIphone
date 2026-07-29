@@ -6,6 +6,7 @@ import UIKit
 struct NutritionTrackerApp: App {
     @StateObject private var viewModel = MainViewModel()
     @StateObject private var localization = LocalizationManager.shared
+    @StateObject private var auth = AuthManager.shared
 
     // Бренд-зелёный. Насыщенный глубокий зелёный (#1B9E3E), заданный явно в sRGB,
     // чтобы цвет не приглушался цветовым пространством дисплея.
@@ -42,6 +43,7 @@ struct NutritionTrackerApp: App {
             ContentView()
                 .environmentObject(viewModel)
                 .environmentObject(localization)
+                .environmentObject(auth)
                 .environment(\.locale, localization.locale)
                 .tint(Color(Self.brandGreenUI))   // зелёный акцент для controls на всех экранах
                 .id(localization.language)   // rebuild the whole tree on language change
@@ -61,13 +63,63 @@ struct NutritionTrackerApp: App {
 
 struct ContentView: View {
     @EnvironmentObject var viewModel: MainViewModel
+    @EnvironmentObject var auth: AuthManager
+    @StateObject private var sync = SyncManager.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
-            if viewModel.hasProfile {
+            if !auth.isSignedIn {
+                LoginScreen()
+            } else if viewModel.hasProfile {
                 MainScreen(viewModel: viewModel)
             } else {
                 OnboardingScreen(viewModel: viewModel)
+            }
+        }
+        .overlay {
+            if sync.isInitialSyncing {
+                ZStack {
+                    Color.black.opacity(0.35).ignoresSafeArea()
+                    VStack(spacing: 14) {
+                        ProgressView()
+                            .controlSize(.large)
+                            .tint(.white)
+                        Text("Загружаем ваши данные...")
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                    }
+                    .padding(28)
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(.black.opacity(0.5)))
+                }
+            }
+        }
+        // Полная загрузка данных при входе (busy indicator), затем перечитываем локальный VM.
+        .onChange(of: auth.isSignedIn) { _, signedIn in
+            if signedIn {
+                Task {
+                    await sync.pullOnLogin()
+                    viewModel.loadData()
+                }
+            } else {
+                sync.resetOnSignOut()
+            }
+        }
+        // Тихая ежедневная синхронизация при выходе приложения в активное состояние.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active && auth.isSignedIn {
+                Task {
+                    await sync.dailySyncIfNeeded()
+                    viewModel.loadData()
+                }
+            }
+        }
+        // Профиль только что создан в онбординге → сразу заливаем на сервер
+        // (иначе он уйдёт только при следующей ежедневной синхронизации).
+        .onChange(of: viewModel.hasProfile) { _, has in
+            if has && auth.isSignedIn {
+                Task { await sync.backgroundSync() }
             }
         }
     }
@@ -127,6 +179,7 @@ struct ImportFoodSheet: View {
                     }
                 }
             }
+            .sheetChrome()
         }
     }
 
