@@ -3,11 +3,11 @@ import os.log
 
 private let logger = Logger(subsystem: "com.nutrition.tracker", category: "Repository")
 
-// Репозиторий тонкого клиента: локальная БД/кэш + один вызов backend на действие.
-// Вся многошаговая AI/USDA-логика переехала на сервер (см. backend/ARCHITECTURE.md).
-// Что осталось локально: SwiftData (профиль, нормы, записи, кэш), WeightParser,
-// пересчёт на вес, сохранённые продукты, UX-диалоги (в MainViewModel).
-// Backend возвращает нутриенты на 100г; клиент масштабирует.
+// Thin-client repository: local DB/cache + one backend call per action.
+// All the multi-step AI/USDA logic moved to the server (see backend/ARCHITECTURE.md).
+// What stays local: SwiftData (profile, norms, entries, cache), WeightParser,
+// recalculation by weight, saved products, UX dialogs (in MainViewModel).
+// The backend returns nutrients per 100g; the client scales them.
 @MainActor
 class NutritionRepository {
     static let shared = NutritionRepository()
@@ -40,7 +40,7 @@ class NutritionRepository {
         db.saveDailyNorms(nutrientsJson: db.encodeNutrients(nutrients))
     }
 
-    /// Расчёт суточных норм через backend (/v1/norms). Локально сохраняем результат.
+    /// Calculate daily targets via the backend (/v1/norms). Save the result locally.
     func calculateAndSaveNorms(gender: String, age: Int, weight: Double, height: Double, goals: String) async throws -> NutrientData {
         let genderForPrompt = Gender.from(stored: gender).promptValue
         let nutrients = try await network.calculateNorms(
@@ -95,23 +95,23 @@ class NutritionRepository {
         db.parseNutrients(json) ?? NutrientData()
     }
 
-    /// Быстрое добавление сохранённого продукта. Fat-details теперь заполняет backend
-    /// при первом анализе, поэтому здесь просто читаем кэш (без сетевых вызовов).
+    /// Quick add of a saved product. Fat details are now filled by the backend
+    /// on the first analysis, so here we just read the cache (no network calls).
     func enrichFatDetailsForCachedEntry(_ entry: FoodCache) async throws -> NutrientData {
         parseNutrients(entry.nutrientsPer100gJson)
     }
 
-    // MARK: - Main Food Analysis Pipeline (текст)
+    // MARK: - Main Food Analysis Pipeline (text)
 
-    /// Текстовый анализ: локальный парс + кэш → один вызов backend /v1/food/analyze.
-    /// Вес парсит клиент (WeightParser). Нутриенты backend отдаёт на 100г → масштабируем.
+    /// Text analysis: local parse + cache -> a single backend call /v1/food/analyze.
+    /// The client parses the weight (WeightParser). The backend returns nutrients per 100g -> we scale.
     func analyzeFoodText(_ foodDescription: String, useCache: Bool = true) async throws -> [FoodAnalysisResult] {
         let localParsed = parseLocalFoodInput(foodDescription)
 
         var cachedResults: [FoodAnalysisResult] = []
         var uncachedItems: [(name: String, grams: Double)] = []
 
-        // Локальный кэш: попадание → берём с устройства (сети нет).
+        // Local cache: a hit -> take it from the device (no network).
         for (name, weight) in localParsed {
             if useCache, let cached = db.findInCache(key: name) {
                 let per100g = db.parseNutrients(cached.nutrientsPer100gJson) ?? NutrientData()
@@ -126,12 +126,12 @@ class NutritionRepository {
             }
         }
 
-        // Всё из локального кэша — сети не нужно.
+        // Everything from the local cache — no network needed.
         if uncachedItems.isEmpty && !cachedResults.isEmpty {
             return cachedResults
         }
 
-        // Промах — один вызов backend.
+        // Miss — one backend call.
         var results = cachedResults
         if !uncachedItems.isEmpty {
             let items = uncachedItems.map { AnalyzeItem(name: $0.name, grams: $0.grams) }
@@ -142,7 +142,7 @@ class NutritionRepository {
                 throw APIError.apiError(message: String(localized: "Не удалось распознать продукты из описания"))
             }
             for r in backendResults {
-                // Локальный кэш: сохраняем на устройстве по введённому имени + англ. ключу.
+                // Local cache: save on the device by the entered name + English key.
                 db.saveToCache(keyOriginal: r.foodName, keyEn: r.foodNameEn, nutrientsPer100g: r.nutrientsPer100g)
                 let factor = r.weightGrams / 100.0
                 results.append(FoodAnalysisResult(
@@ -158,7 +158,7 @@ class NutritionRepository {
         return results
     }
 
-    /// Целое блюдо (фото со сменой имени) через backend /v1/food/dish. Без USDA.
+    /// Whole dish (photo with a name change) via the backend /v1/food/dish. No USDA.
     func analyzeSingleDish(_ dishName: String, weightGrams: Double, useCache: Bool = true) async throws -> FoodAnalysisResult {
         if useCache, let cached = db.findInCache(key: dishName) {
             let per100g = db.parseNutrients(cached.nutrientsPer100gJson) ?? NutrientData()
@@ -173,7 +173,7 @@ class NutritionRepository {
 
     // MARK: - Photo Analysis
 
-    /// Фото → backend /v1/food/photo. Нутриенты на 100г (клиент масштабирует на вес).
+    /// Photo -> backend /v1/food/photo. Nutrients per 100g (the client scales by weight).
     func identifyAndAnalyzeFoodFromPhoto(_ imageData: Data) async throws -> FoodAnalysisResult {
         let base64 = imageData.base64EncodedString()
         let res = try await network.analyzePhoto(imageBase64: base64, uiLang: AppLocale.languageEnglishName)
@@ -181,17 +181,17 @@ class NutritionRepository {
         return FoodAnalysisResult(foodName: res.foodName, foodNameEn: res.foodNameEn, weightGrams: res.weightGrams, nutrients: res.nutrientsPer100g, fromCache: false)
     }
 
-    // MARK: - Barcode (OFF на клиенте, обогащение на backend)
+    // MARK: - Barcode (OFF on the client, enrichment on the backend)
 
-    /// Штрихкод: локальный кэш → клиент сам идёт в OFF → backend обогащает (/v1/food/enrich).
-    /// Возвращает нутриенты на 100г.
+    /// Barcode: local cache -> the client queries OFF itself -> backend enriches (/v1/food/enrich).
+    /// Returns nutrients per 100g.
     func lookupBarcodeWithCache(_ barcode: String) async throws -> (name: String, nutrients: NutrientData, fromCache: Bool)? {
         if let cached = db.findInCache(key: "barcode:\(barcode)") {
             let nutrients = db.parseNutrients(cached.nutrientsPer100gJson) ?? NutrientData()
             return (cached.keyEn, nutrients, true)
         }
 
-        // Клиент сам ходит в OFF (свой IP → лимит не схлопывается).
+        // The client queries OFF itself (its own IP -> the rate limit doesn't collapse).
         let response = try await network.lookupBarcode(barcode)
         guard let product = response.product else { return nil }
         let name = [product.productNameRu, product.productNameUk, product.productNameEn, product.productName, product.brands]
@@ -200,18 +200,18 @@ class NutritionRepository {
 
         let offPer100g = nutrientsFromOFF(product.nutriments)
 
-        // Backend обогащает недостающие микро/жиры (данные от клиента → в общий кэш НЕ пишет).
+        // The backend enriches missing micros/fats (data from the client -> does NOT write to the shared cache).
         let enriched = try await network.enrichBarcode(name: name, nutrientsPer100g: offPer100g)
 
-        // Локальный кэш (только на устройстве).
+        // Local cache (device only).
         db.saveToCache(keyOriginal: name, keyEn: name, nutrientsPer100g: enriched.nutrientsPer100g)
         db.saveToCache(keyOriginal: "barcode:\(barcode)", keyEn: name, nutrientsPer100g: enriched.nutrientsPer100g)
 
         return (name, enriched.nutrientsPer100g, false)
     }
 
-    /// Обогащение микронутриентов через backend /v1/food/enrich (используется в фото-потоке
-    /// при неизменённом имени). Backend дозаполняет недостающие микро + жиры.
+    /// Micronutrient enrichment via the backend /v1/food/enrich (used in the photo flow
+    /// when the name is unchanged). The backend fills in missing micros + fats.
     func enrichMicrosWithAIPublic(_ nutrients: NutrientData, foodNameEn: String) async -> NutrientData {
         do {
             let res = try await network.enrichBarcode(name: foodNameEn, nutrientsPer100g: nutrients)
@@ -222,9 +222,9 @@ class NutritionRepository {
         }
     }
 
-    // MARK: - Локальные хелперы (остаются на клиенте)
+    // MARK: - Local helpers (stay on the client)
 
-    /// Парсинг ввода: разбить по запятым, извлечь вес локально (WeightParser).
+    /// Parse the input: split by commas, extract weight locally (WeightParser).
     private func parseLocalFoodInput(_ input: String) -> [(String, Double)] {
         let items = input.components(separatedBy: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
@@ -235,7 +235,7 @@ class NutritionRepository {
         }.filter { !$0.0.isEmpty }
     }
 
-    /// OFF nutriments → NutrientData (на 100г). Клиент парсит OFF-ответ сам.
+    /// OFF nutriments -> NutrientData (per 100g). The client parses the OFF response itself.
     private func nutrientsFromOFF(_ n: OFFNutriments?) -> NutrientData {
         NutrientData(
             calories: n?.energyKcal100g ?? 0, protein: n?.proteins100g ?? 0,

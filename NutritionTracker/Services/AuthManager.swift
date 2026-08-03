@@ -2,9 +2,9 @@ import Foundation
 import AuthenticationServices
 import CryptoKit
 
-// Управление пользовательской сессией: вход через Apple (нативно) / Google (web-OAuth),
-// хранение access/refresh в Keychain, обновление сессии, выход, удаление аккаунта.
-// Данные приложения остаются локальными (SwiftData) — синк отдельная фаза.
+// Manages the user session: sign-in via Apple (native) / Google (web OAuth),
+// storing access/refresh in the Keychain, session refresh, sign-out, account deletion.
+// App data stays local (SwiftData) — sync is a separate phase.
 @MainActor
 final class AuthManager: NSObject, ObservableObject {
     static let shared = AuthManager()
@@ -12,11 +12,11 @@ final class AuthManager: NSObject, ObservableObject {
     @Published private(set) var isSignedIn: Bool
     @Published var isBusy = false
     @Published var errorMessage: String?
-    // Ставится в true, когда аккаунт удалён с другого устройства — ContentView
-    // показывает уведомление и сбрасывает флаг.
+    // Set to true when the account is deleted on another device — ContentView
+    // shows a notice and resets the flag.
     @Published var accountDeletedNotice = false
 
-    // Токены (актор NetworkService читает access через nonisolated-геттер ниже).
+    // Tokens (the NetworkService actor reads access via the nonisolated getter below).
     private(set) var accessTokenValue: String?
     private var refreshTokenValue: String?
 
@@ -29,18 +29,18 @@ final class AuthManager: NSObject, ObservableObject {
         super.init()
     }
 
-    // Текущий nonce для Apple (SHA256 кладётся в запрос, сырой сверяется бэком).
+    // Current nonce for Apple (SHA256 goes into the request, the raw one is verified by the backend).
     private var currentAppleRawNonce: String?
     private var appleContinuation: CheckedContinuation<Void, Error>?
     private var webAuthSession: ASWebAuthenticationSession?
     private var pendingGoogleCodeVerifier: String?
 
-    // MARK: - Доступ к токену для NetworkService (actor)
+    // MARK: - Token access for NetworkService (actor)
 
-    // NetworkService — actor; читает токен через async-обёртку.
+    // NetworkService is an actor; it reads the token via an async wrapper.
     var accessToken: String? { accessTokenValue }
 
-    // MARK: - Сохранение/сброс сессии
+    // MARK: - Save/clear session
 
     private func store(_ tokens: TokenResponse) {
         accessTokenValue = tokens.accessToken
@@ -57,9 +57,9 @@ final class AuthManager: NSObject, ObservableObject {
         isSignedIn = false
     }
 
-    // Аккаунт удалён с другого устройства (бэкенд вернул account_deleted).
-    // Стираем локальные данные и разлогиниваем — как при удалении на этом устройстве.
-    // Флаг ниже показывает пользователю уведомление перед возвратом на экран входа.
+    // Account deleted on another device (backend returned account_deleted).
+    // Wipe local data and sign out — same as deleting on this device.
+    // The flag below shows the user a notice before returning to the login screen.
     func handleAccountDeleted() {
         DatabaseManager.shared.wipeAllLocalData()
         SyncManager.shared.resetOnSignOut()
@@ -67,7 +67,7 @@ final class AuthManager: NSObject, ObservableObject {
         accountDeletedNotice = true
     }
 
-    // MARK: - Refresh (вызывается из NetworkService при 401)
+    // MARK: - Refresh (called from NetworkService on 401)
 
     func tryRefresh() async -> Bool {
         guard let refresh = refreshTokenValue else { return false }
@@ -81,15 +81,15 @@ final class AuthManager: NSObject, ObservableObject {
         }
     }
 
-    // MARK: - Выход / удаление
+    // MARK: - Sign out / delete
 
     func signOut() async {
         if let refresh = refreshTokenValue {
             await NetworkService.shared.logout(refreshToken: refresh)
         }
-        // ВАЖНО: стираем локальные данные и при обычном выходе, иначе при входе
-        // ДРУГОГО аккаунта на этом устройстве данные прошлого юзера и покажутся
-        // локально, и зальются на сервер нового аккаунта через pullOnLogin(since=0).
+        // IMPORTANT: wipe local data on a normal sign-out too, otherwise when
+        // ANOTHER account signs in on this device the previous user's data would both show
+        // locally and get uploaded to the new account's server via pullOnLogin(since=0).
         DatabaseManager.shared.wipeAllLocalData()
         SyncManager.shared.resetOnSignOut()
         clearSession()
@@ -105,15 +105,15 @@ final class AuthManager: NSObject, ObservableObject {
         do {
             try await NetworkService.shared.deleteAccount(accessToken: access)
         } catch {
-            // даже при ошибке сети — локально разлогиниваем
+            // even on a network error — sign out locally
         }
-        // Аккаунт удалён на сервере → стираем все локальные данные (не soft delete).
+        // Account deleted on the server -> wipe all local data (not a soft delete).
         DatabaseManager.shared.wipeAllLocalData()
         SyncManager.shared.resetOnSignOut()
         clearSession()
     }
 
-    // MARK: - Sign in with Apple (нативно)
+    // MARK: - Sign in with Apple (native)
 
     func signInWithApple() {
         let rawNonce = Self.randomNonce()
@@ -250,7 +250,7 @@ extension AuthManager: ASAuthorizationControllerDelegate {
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
         isBusy = false
-        // Отмена пользователем — не показываем как ошибку.
+        // User cancellation — don't show it as an error.
         if (error as? ASAuthorizationError)?.code != .canceled {
             errorMessage = "Вход через Apple не удался"
         }

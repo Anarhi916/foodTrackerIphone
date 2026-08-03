@@ -60,9 +60,9 @@ class MainViewModel: ObservableObject {
         cachedFoods = repo.getAllCachedFoods()
     }
 
-    /// Полный сброс состояния при смене аккаунта (выход/удаление/account_deleted).
-    /// Чистит и transient/dialog/pending-поля, и in-memory копии данных из БД —
-    /// чтобы данные прошлого юзера не «протекли» в сессию следующего.
+    /// Full state reset when the account changes (sign-out/deletion/account_deleted).
+    /// Clears both transient/dialog/pending fields and in-memory copies of DB data —
+    /// so the previous user's data doesn't "leak" into the next session.
     func reset() {
         foodInput = ""
         isLoading = false
@@ -383,10 +383,10 @@ class MainViewModel: ObservableObject {
         cachedFoods = repo.getAllCachedFoods()
     }
 
-    /// Создаёт кастомное блюдо из списка ингредиентов. Для каждого ингредиента вызываем
-    /// тот же AI/USDA-pipeline что и при основном вводе, суммируем нутриенты, нормализуем
-    /// к 100г блюда и сохраняем как обычную запись в кеш (имя на русском и английском
-    /// одинаковое — это пользовательское имя, оно не переводится).
+    /// Creates a custom dish from a list of ingredients. For each ingredient we call
+    /// the same AI/USDA pipeline as the main input, sum the nutrients, normalize
+    /// to 100g of the dish and save it as a regular cache entry (the Russian and English
+    /// names are identical — it's a user-defined name, it isn't translated).
     func createCustomDish(name: String, ingredients: [(name: String, weight: Double, cached: FoodCache?)]) async throws {
         var total = NutrientData()
         var totalWeight: Double = 0

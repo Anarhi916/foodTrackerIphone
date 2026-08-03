@@ -1,9 +1,9 @@
 import SwiftUI
 
-// Кастомный зелёный хедер (как Android TopAppBar): ровный брендовый зелёный (AppColor.primary #1B9E3E), белые иконки БЕЗ
-// системных glass-капсул iOS 26. Заменяет системный navigation bar на всех экранах.
-// Использование: обернуть контент в VStack(spacing:0){ BrandHeader(...) ; content }
-// и скрыть системный бар через .navigationBarHidden(true).
+// Custom green header (like Android's TopAppBar): a flat brand green (AppColor.primary #1B9E3E), white icons WITHOUT
+// the iOS 26 system glass capsules. Replaces the system navigation bar on all screens.
+// Usage: wrap content in VStack(spacing:0){ BrandHeader(...) ; content }
+// and hide the system bar via .navigationBarHidden(true).
 struct BrandHeader<Leading: View, Trailing: View>: View {
     let title: String
     @ViewBuilder var leading: () -> Leading

@@ -1,8 +1,8 @@
 import SwiftUI
 import AuthenticationServices
 
-// Экран входа. Обязателен перед онбордингом/главным (см. план — фаза аккаунтов).
-// Кнопки Apple/Google — по фирменным гайдлайнам провайдеров.
+// Login screen. Required before onboarding/main (see the plan — accounts phase).
+// Apple/Google buttons follow the providers' branding guidelines.
 struct LoginScreen: View {
     @EnvironmentObject var auth: AuthManager
 
@@ -14,7 +14,7 @@ struct LoginScreen: View {
                 VStack(spacing: 24) {
                     Spacer(minLength: 40)
 
-                    // Лого — лист в зелёном кружке (общий вектор с Android).
+                    // Logo — a leaf in a green circle (shared vector with Android).
                     VStack(spacing: 8) {
                         Image("LoginLogo")
                             .resizable()
@@ -31,7 +31,7 @@ struct LoginScreen: View {
                     Spacer(minLength: 20)
 
                     VStack(spacing: 12) {
-                        // ─── Sign in with Apple: чёрная кнопка, белый логотип + текст ───
+                        // ─── Sign in with Apple: black button, white logo + text ───
                         Button(action: { auth.signInWithApple() }) {
                             HStack(spacing: 8) {
                                 Image(systemName: "applelogo")
@@ -45,7 +45,7 @@ struct LoginScreen: View {
                             .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.black))
                         }
 
-                        // ─── Sign in with Google: белая кнопка, серая рамка, цветной G ───
+                        // ─── Sign in with Google: white button, gray border, colored G ───
                         Button(action: { auth.signInWithGoogle() }) {
                             HStack(spacing: 10) {
                                 Image("GoogleG")

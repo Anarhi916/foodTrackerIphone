@@ -1,23 +1,23 @@
 import Foundation
 
-// Клиент ходит ТОЛЬКО на свой backend-прокси. Ключи AI/USDA переехали на сервер
-// (см. backend/ARCHITECTURE.md). OFF-запрос по штрихкоду остаётся на клиенте
-// (свой IP → лимит не схлопывается; ключа нет — прятать нечего).
+// The client talks ONLY to its own backend proxy. The AI/USDA keys moved to the server
+// (see backend/ARCHITECTURE.md). The OFF barcode lookup stays on the client
+// (its own IP -> the rate limit doesn't collapse; there's no key — nothing to hide).
 struct APIConfig {
     // MARK: - Backend
-    // dev: локальный сервер (симулятор видит localhost мака). prod: заменить на боевой URL.
+    // dev: local server (the simulator sees the mac's localhost). prod: replace with the production URL.
     static let backendBaseURL = "http://localhost:3000"
 
-    // Dev-авторизация (X-Dev-Auth). В prod заменяется на App Attest.
-    // Должен совпадать с DEV_AUTH_SECRET в backend/.env.
+    // Dev auth (X-Dev-Auth). In prod it's replaced by App Attest.
+    // Must match DEV_AUTH_SECRET in backend/.env.
     static let devAuthSecret = "change-me-local-dev-secret"
 
-    // MARK: - OpenFoodFacts (штрихкод — остаётся на клиенте)
+    // MARK: - OpenFoodFacts (barcode — stays on the client)
     static let openFoodFactsBaseURL = "https://world.openfoodfacts.org"
 
-    // MARK: - Google Sign-In (OAuth web flow через ASWebAuthenticationSession)
-    // iOS OAuth client ID из Google Cloud Console. Reversed-client-ID — это URL-scheme.
+    // MARK: - Google Sign-In (OAuth web flow via ASWebAuthenticationSession)
+    // iOS OAuth client ID from the Google Cloud Console. The reversed client ID is the URL scheme.
     static let googleClientId = "634452098876-85n6iabtmhsjm12vqpkdmruk2g72qaq8.apps.googleusercontent.com"
-    // reversed client id для redirect
+    // reversed client id for redirect
     static let googleRedirectScheme = "com.googleusercontent.apps.634452098876-85n6iabtmhsjm12vqpkdmruk2g72qaq8"
 }

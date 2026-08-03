@@ -1,13 +1,13 @@
 import Foundation
 import Security
 
-// Хранение токенов сессии в Keychain (не в UserDefaults). Access + refresh.
+// Stores session tokens in the Keychain (not UserDefaults). Access + refresh.
 enum KeychainService {
     private static let service = "com.nutrition.tracker.auth"
 
     static func set(_ value: String, for key: String) {
         let data = Data(value.utf8)
-        // Удаляем старое значение, затем добавляем новое.
+        // Delete the old value, then add the new one.
         delete(key)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -45,7 +45,7 @@ enum KeychainService {
         SecItemDelete(query as CFDictionary)
     }
 
-    // Удобные ключи
+    // Convenience keys
     static let accessKey = "accessToken"
     static let refreshKey = "refreshToken"
 

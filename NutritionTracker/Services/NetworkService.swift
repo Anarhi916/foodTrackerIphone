@@ -1,8 +1,8 @@
 import Foundation
 
-// Клиент backend-прокси. Все AI/USDA-вызовы идут на наш сервер (/v1/*).
-// Нутриенты приходят на 100г; клиент масштабирует сам.
-// См. backend/ARCHITECTURE.md. NutrientData декодируется напрямую (snake_case совпадает).
+// Backend proxy client. All AI/USDA calls go to our server (/v1/*).
+// Nutrients arrive per 100g; the client scales them itself.
+// See backend/ARCHITECTURE.md. NutrientData decodes directly (snake_case matches).
 actor NetworkService {
     static let shared = NetworkService()
 
@@ -15,7 +15,7 @@ actor NetworkService {
         session = URLSession(configuration: config)
     }
 
-    // MARK: - Общий POST на backend
+    // MARK: - Shared POST to backend
 
     private func post<Req: Encodable, Res: Decodable>(
         _ path: String, body: Req, timeout: TimeInterval = 120
@@ -25,10 +25,10 @@ actor NetworkService {
         req.httpMethod = "POST"
         req.timeoutInterval = timeout
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        // Dev-авторизация. В prod заменяется на App Attest (X-Attest-*).
+        // Dev auth. In prod it's replaced by App Attest (X-Attest-*).
         req.setValue(APIConfig.devAuthSecret, forHTTPHeaderField: "X-Dev-Auth")
         req.setValue("ios", forHTTPHeaderField: "X-Platform")
-        // Пользовательская сессия (Bearer). auth-эндпоинты (/v1/auth/*) сами не требуют — там nil.
+        // User session (Bearer). Auth endpoints (/v1/auth/*) don't require it — nil there.
         if let access = await AuthManager.shared.accessToken {
             req.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization")
         }
@@ -37,9 +37,9 @@ actor NetworkService {
         var (data, response) = try await session.data(for: req)
         guard var http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
 
-        // 401 → пробуем обновить сессию refresh-токеном и повторить один раз.
+        // 401 -> try to refresh the session with the refresh token and retry once.
         if http.statusCode == 401 {
-            // Аккаунт удалён с другого устройства → стираем локальные данные, на логин.
+            // Account deleted on another device -> wipe local data, go to login.
             if let errObj = try? JSONDecoder().decode(BackendError.self, from: data),
                errObj.error == "account_deleted" {
                 await AuthManager.shared.handleAccountDeleted()
@@ -56,7 +56,7 @@ actor NetworkService {
         }
         guard http.statusCode == 200 else {
             let bodyStr = String(data: data, encoding: .utf8) ?? ""
-            // Пытаемся достать message из {error, message}
+            // Try to extract message from {error, message}
             if let errObj = try? JSONDecoder().decode(BackendError.self, from: data),
                let msg = errObj.message {
                 throw APIError.apiError(message: msg)
@@ -66,7 +66,7 @@ actor NetworkService {
         return try JSONDecoder().decode(Res.self, from: data)
     }
 
-    // MARK: - /v1/food/analyze (текст)
+    // MARK: - /v1/food/analyze (text)
 
     func analyzeFood(items: [AnalyzeItem], uiLang: String, useCache: Bool = true) async throws -> [BackendFoodResult] {
         let body = AnalyzeRequest(items: items, uiLang: uiLang, useCache: useCache)
@@ -74,7 +74,7 @@ actor NetworkService {
         return res.results
     }
 
-    // MARK: - /v1/food/dish (целое блюдо — фото со сменой имени)
+    // MARK: - /v1/food/dish (whole dish — photo with a name change)
 
     func analyzeDish(dishName: String) async throws -> DishResponse {
         try await post("/v1/food/dish", body: DishRequest(dishName: dishName))
@@ -86,7 +86,7 @@ actor NetworkService {
         try await post("/v1/food/photo", body: PhotoRequest(imageBase64: imageBase64, uiLang: uiLang))
     }
 
-    // MARK: - /v1/food/enrich (штрихкод — OFF-данные от клиента)
+    // MARK: - /v1/food/enrich (barcode — OFF data from the client)
 
     func enrichBarcode(name: String, nutrientsPer100g: NutrientData) async throws -> EnrichResponse {
         try await post("/v1/food/enrich", body: EnrichRequest(name: name, nutrientsPer100g: nutrientsPer100g))
@@ -100,8 +100,8 @@ actor NetworkService {
         return res.norms
     }
 
-    // MARK: - Auth (/v1/auth/*) — вход/обновление/выход/удаление.
-    // Отдельный helper: НЕ делает refresh-петлю (иначе рекурсия при логине).
+    // MARK: - Auth (/v1/auth/*) — sign-in/refresh/logout/delete.
+    // Separate helper: does NOT do the refresh loop (otherwise recursion at login).
 
     private func authPost<Req: Encodable, Res: Decodable>(_ path: String, body: Req) async throws -> Res {
         let url = URL(string: "\(APIConfig.backendBaseURL)\(path)")!
@@ -192,7 +192,7 @@ actor NetworkService {
         return try JSONDecoder().decode(SyncPullResponse.self, from: data)
     }
 
-    // MARK: - OpenFoodFacts (штрихкод — остаётся на клиенте, свой IP)
+    // MARK: - OpenFoodFacts (barcode — stays on the client, its own IP)
 
     func lookupBarcode(_ barcode: String) async throws -> OpenFoodFactsResponse {
         let url = URL(string: "\(APIConfig.openFoodFactsBaseURL)/api/v2/product/\(barcode).json")!
@@ -204,7 +204,7 @@ actor NetworkService {
     }
 }
 
-// MARK: - Backend request/response модели
+// MARK: - Backend request/response models
 
 struct AnalyzeItem: Encodable {
     let name: String
@@ -277,7 +277,7 @@ struct BackendError: Decodable {
     let message: String?
 }
 
-// MARK: - Auth модели
+// MARK: - Auth models
 
 struct AppleAuthRequest: Encodable {
     let identityToken: String

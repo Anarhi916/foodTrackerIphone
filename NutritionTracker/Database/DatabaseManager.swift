@@ -36,15 +36,15 @@ class DatabaseManager {
         container.mainContext
     }
 
-    /// Полное физическое удаление всех локальных данных пользователя.
-    /// Используется при выходе/удалении аккаунта (не soft delete).
+    /// Full physical deletion of all local user data.
+    /// Used on account sign-out/deletion (not a soft delete).
     func wipeAllLocalData() {
         for entry in (try? context.fetch(FetchDescriptor<FoodEntry>())) ?? [] { context.delete(entry) }
         for cache in (try? context.fetch(FetchDescriptor<FoodCache>())) ?? [] { context.delete(cache) }
         for norms in (try? context.fetch(FetchDescriptor<DailyNorms>())) ?? [] { context.delete(norms) }
         for profile in (try? context.fetch(FetchDescriptor<UserProfile>())) ?? [] { context.delete(profile) }
         try? context.save()
-        // Чистим временные CSV-экспорты (история питания прошлого юзера).
+        // Clean up temporary CSV exports (the previous user's nutrition history).
         let tmp = FileManager.default.temporaryDirectory
         if let files = try? FileManager.default.contentsOfDirectory(at: tmp, includingPropertiesForKeys: nil) {
             for f in files where f.pathExtension == "csv" {
@@ -61,7 +61,7 @@ class DatabaseManager {
     }
 
     func saveProfile(gender: String, age: Int, weight: Double, height: Double, goals: String) {
-        // Обновляем существующий ряд (сохраняя updatedAt-семантику), иначе создаём.
+        // Update the existing row (preserving updatedAt semantics), otherwise create one.
         if let existing = getProfile() {
             existing.gender = gender; existing.age = age; existing.weightKg = weight
             existing.heightCm = height; existing.goalsText = goals
@@ -81,7 +81,7 @@ class DatabaseManager {
     }
 
     func saveDailyNorms(nutrientsJson: String) {
-        // Обновляем единственный ряд норм (для корректной синхронизации updatedAt).
+        // Update the single norms row (for correct updatedAt sync).
         if let existing = getDailyNorms() {
             existing.nutrientsJson = nutrientsJson
             existing.updatedAt = Date(); existing.deletedAt = nil
@@ -147,7 +147,7 @@ class DatabaseManager {
     }
 
     func deleteFoodEntry(_ entry: FoodEntry) {
-        // Soft delete — синхронизируется как tombstone (см. sync-architecture).
+        // Soft delete — synced as a tombstone (see sync-architecture).
         entry.deletedAt = Date()
         entry.updatedAt = Date()
         try? context.save()
@@ -167,7 +167,7 @@ class DatabaseManager {
     func saveToCache(keyOriginal: String, keyEn: String, nutrientsPer100g: NutrientData) {
         let normalized = normalizeKey(keyOriginal)
         let normalizedEn = normalizeKey(keyEn)
-        // Если ряд уже есть (включая tombstone) — «воскрешаем»/обновляем его.
+        // If the row already exists (including a tombstone) — "resurrect"/update it.
         let desc1 = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyNormalized == normalized })
         if let existing = try? context.fetch(desc1).first {
             existing.nutrientsPer100gJson = encodeNutrients(nutrientsPer100g)
@@ -262,12 +262,12 @@ class DatabaseManager {
         try? context.save()
     }
 
-    // MARK: - Sync (см. sync-architecture)
+    // MARK: - Sync (see sync-architecture)
 
     private static func ms(_ date: Date) -> Int64 { Int64(date.timeIntervalSince1970 * 1000) }
     private static func date(_ ms: Int64) -> Date { Date(timeIntervalSince1970: Double(ms) / 1000) }
 
-    /// Собрать локальную дельту (всё, что изменилось после `since` ms). since=0 → всё.
+    /// Collect the local delta (everything changed after `since` ms). since=0 -> everything.
     func collectChanges(since: Int64) -> SyncPushRequest {
         let sinceDate = Self.date(since)
 
@@ -303,9 +303,9 @@ class DatabaseManager {
         return SyncPushRequest(profile: profileDTO, norms: normsDTO, entries: entries, foodCache: cache)
     }
 
-    /// Применить данные с сервера (last-write-wins по updatedAt).
+    /// Apply data from the server (last-write-wins by updatedAt).
     func applyPulled(_ resp: SyncPullResponse) {
-        // Profile (1 ряд)
+        // Profile (1 row)
         if let dto = resp.profile {
             let existing = getProfile()
             if existing == nil || Self.date(dto.updatedAt) >= (existing!.updatedAt) {
@@ -317,7 +317,7 @@ class DatabaseManager {
                 context.insert(p)
             }
         }
-        // Norms (1 ряд)
+        // Norms (1 row)
         if let dto = resp.norms {
             let existing = getDailyNorms()
             if existing == nil || Self.date(dto.updatedAt) >= (existing!.updatedAt) {
@@ -328,7 +328,7 @@ class DatabaseManager {
                 context.insert(n)
             }
         }
-        // Food entries (по clientId)
+        // Food entries (by clientId)
         for dto in resp.entries {
             let cid = dto.clientId
             let desc = FetchDescriptor<FoodEntry>(predicate: #Predicate { $0.clientId == cid })
@@ -350,7 +350,7 @@ class DatabaseManager {
                 context.insert(e)
             }
         }
-        // Food cache (по keyNormalized)
+        // Food cache (by keyNormalized)
         for dto in resp.foodCache {
             let key = dto.keyNormalized
             let desc = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyNormalized == key })

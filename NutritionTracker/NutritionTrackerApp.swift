@@ -8,24 +8,24 @@ struct NutritionTrackerApp: App {
     @StateObject private var localization = LocalizationManager.shared
     @StateObject private var auth = AuthManager.shared
 
-    // Бренд-зелёный. Насыщенный глубокий зелёный (#1B9E3E), заданный явно в sRGB,
-    // чтобы цвет не приглушался цветовым пространством дисплея.
+    // Brand green. A rich, deep green (#1B9E3E) specified explicitly in sRGB
+    // so the color isn't muted by the display's color space.
     static let brandGreenUI = UIColor(
         displayP3Red: 0x1B/255.0, green: 0x9E/255.0, blue: 0x3E/255.0, alpha: 1.0
     )
     static let brandGreen = Color(.sRGB, red: 0x1B/255.0, green: 0x9E/255.0, blue: 0x3E/255.0)
 
     init() {
-        // Глобальный вид навбара: зелёный фон + белый заголовок/кнопки на ВСЕХ экранах
-        // (как Android TopAppBar). Иначе дочерние экраны наследуют системный белый бар.
+        // Global nav bar look: green background + white title/buttons on ALL screens
+        // (like Android's TopAppBar). Otherwise child screens inherit the system white bar.
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = Self.brandGreenUI
-        appearance.shadowColor = .clear   // без полупрозрачной разделительной линии
+        appearance.shadowColor = .clear   // no translucent separator line
         appearance.titleTextAttributes = [.foregroundColor: UIColor.white]
         appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.white]
 
-        // Убрать «капсулы»-фон под toolbar-иконками (iOS 26 рисует их по умолчанию).
+        // Remove the "capsule" background under toolbar icons (iOS 26 draws them by default).
         let buttonAppearance = UIBarButtonItemAppearance()
         buttonAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.white]
         appearance.buttonAppearance = buttonAppearance
@@ -35,7 +35,7 @@ struct NutritionTrackerApp: App {
         UINavigationBar.appearance().standardAppearance = appearance
         UINavigationBar.appearance().scrollEdgeAppearance = appearance
         UINavigationBar.appearance().compactAppearance = appearance
-        UINavigationBar.appearance().tintColor = .white   // кнопка «назад» + иконки белые
+        UINavigationBar.appearance().tintColor = .white   // white "back" button + icons
     }
 
     var body: some Scene {
@@ -45,7 +45,7 @@ struct NutritionTrackerApp: App {
                 .environmentObject(localization)
                 .environmentObject(auth)
                 .environment(\.locale, localization.locale)
-                .tint(Color(Self.brandGreenUI))   // зелёный акцент для controls на всех экранах
+                .tint(Color(Self.brandGreenUI))   // green accent for controls on all screens
                 .id(localization.language)   // rebuild the whole tree on language change
                 .modelContainer(DatabaseManager.shared.container)
                 .onOpenURL { url in
@@ -95,26 +95,26 @@ struct ContentView: View {
                 }
             }
         }
-        // Аккаунт удалён с другого устройства → уведомление, затем экран входа.
+        // Account deleted on another device -> notice, then the login screen.
         .alert("Аккаунт удалён", isPresented: $auth.accountDeletedNotice) {
             Button("OK", role: .cancel) {}
         } message: {
             Text("Ваш аккаунт был удалён. Войдите снова, чтобы продолжить.")
         }
-        // Полная загрузка данных при входе (busy indicator), затем перечитываем локальный VM.
+        // Full data load on login (busy indicator), then re-read the local VM.
         .onChange(of: auth.isSignedIn) { _, signedIn in
             if signedIn {
-                viewModel.reset()              // чистый старт для нового аккаунта
+                viewModel.reset()              // clean start for the new account
                 Task {
                     await sync.pullOnLogin()
                     viewModel.loadData()
                 }
             } else {
-                viewModel.reset()              // при разлогине/удалении гасим всё состояние
+                viewModel.reset()              // on sign-out/deletion, clear all state
                 sync.resetOnSignOut()
             }
         }
-        // Тихая ежедневная синхронизация при выходе приложения в активное состояние.
+        // Silent daily sync when the app enters the active state.
         .onChange(of: scenePhase) { _, phase in
             if phase == .active && auth.isSignedIn {
                 Task {
@@ -123,8 +123,8 @@ struct ContentView: View {
                 }
             }
         }
-        // Профиль только что создан в онбординге → сразу заливаем на сервер
-        // (иначе он уйдёт только при следующей ежедневной синхронизации).
+        // Profile just created during onboarding -> upload to the server immediately
+        // (otherwise it would only go up on the next daily sync).
         .onChange(of: viewModel.hasProfile) { _, has in
             if has && auth.isSignedIn {
                 Task { await sync.backgroundSync() }

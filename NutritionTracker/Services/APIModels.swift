@@ -1,7 +1,7 @@
 import Foundation
 
-// Модели только для OpenFoodFacts (штрихкод/БАД — клиент парсит OFF сам).
-// OpenRouter/USDA-модели удалены: эти вызовы переехали на backend (см. NetworkService).
+// Models only for OpenFoodFacts (barcode/supplements — the client parses OFF itself).
+// OpenRouter/USDA models removed: those calls moved to the backend (see NetworkService).
 
 // MARK: - OpenFoodFacts Models
 

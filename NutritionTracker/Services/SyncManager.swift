@@ -1,15 +1,15 @@
 import Foundation
 import SwiftUI
 
-// Синхронизация данных между устройствами (см. sync-architecture).
-// PULL: full при логине (busy indicator) + 1/день silent при открытии.
-// PUSH: delta 1/день silent при открытии (только изменённое с last_push_at).
+// Data sync between devices (see sync-architecture).
+// PULL: full on login (busy indicator) + 1/day silent on open.
+// PUSH: delta 1/day silent on open (only what changed since last_push_at).
 @MainActor
 final class SyncManager: ObservableObject {
     static let shared = SyncManager()
     private init() {}
 
-    // Публикуется на LoginScreen/ContentView для показа индикатора «Загружаем данные...».
+    // Published to LoginScreen/ContentView to show the "Loading data..." indicator.
     @Published var isInitialSyncing = false
 
     private let lastPushKey = "sync.lastPushAt"
@@ -25,18 +25,18 @@ final class SyncManager: ObservableObject {
         set { UserDefaults.standard.set(Int(newValue), forKey: lastPullKey) }
     }
 
-    // MARK: - Full pull при логине (с busy indicator)
+    // MARK: - Full pull on login (with busy indicator)
 
     func pullOnLogin() async {
         isInitialSyncing = true
         defer { isInitialSyncing = false }
         do {
-            // 1) Тянем всё с сервера и мержим (LWW).
+            // 1) Pull everything from the server and merge (LWW).
             let resp = try await NetworkService.shared.syncPull(since: nil)
             DatabaseManager.shared.applyPulled(resp)
             lastPullAt = resp.serverTime
-            // 2) Заливаем ВСЕ локальные данные (since=0) — важно для апгрейда старых
-            //    пользователей: их дологиновая история/продукты попадут на сервер.
+            // 2) Push ALL local data (since=0) — important for upgrading legacy
+            //    users: their pre-login history/foods make it to the server.
             let allLocal = DatabaseManager.shared.collectChanges(since: 0)
             if allLocal.profile != nil || allLocal.norms != nil
                 || !allLocal.entries.isEmpty || !allLocal.foodCache.isEmpty {
@@ -50,9 +50,9 @@ final class SyncManager: ObservableObject {
         }
     }
 
-    // MARK: - Ежедневная фоновая синхронизация (silent)
+    // MARK: - Daily background sync (silent)
 
-    /// Вызывается при открытии приложения. Выполняет push+pull не чаще 1 раза в день.
+    /// Called when the app opens. Runs push+pull at most once per day.
     func dailySyncIfNeeded() async {
         guard AuthManager.shared.isSignedIn else { return }
         let today = Self.dayString(Date())
@@ -61,13 +61,13 @@ final class SyncManager: ObservableObject {
         UserDefaults.standard.set(today, forKey: lastDailyKey)
     }
 
-    /// Push дельты, затем pull дельты. Тихо, без индикатора.
+    /// Push the delta, then pull the delta. Silent, no indicator.
     func backgroundSync() async {
         await sync(pushSince: lastPushAt)
     }
 
-    /// Принудительная полная синхронизация (кнопка в профиле): пушим ВСЁ (since=0),
-    /// затем pull дельты. Гарантирует заливку данных, созданных до появления аккаунтов.
+    /// Forced full sync (button in the profile): push EVERYTHING (since=0),
+    /// then pull the delta. Guarantees upload of data created before accounts existed.
     func forceSyncNow() async {
         await sync(pushSince: 0)
     }
@@ -85,7 +85,7 @@ final class SyncManager: ObservableObject {
         } catch {
             print("[sync] push failed: \(error)")
         }
-        // 2) PULL — дельта с прошлого pull.
+        // 2) PULL — delta since the last pull.
         do {
             let since = lastPullAt > 0 ? lastPullAt : nil
             let resp = try await NetworkService.shared.syncPull(since: since)
@@ -96,7 +96,7 @@ final class SyncManager: ObservableObject {
         }
     }
 
-    // Сброс маркеров при выходе — новый юзер на этом устройстве синкается заново.
+    // Reset markers on sign-out — a new user on this device syncs from scratch.
     func resetOnSignOut() {
         UserDefaults.standard.removeObject(forKey: lastPushKey)
         UserDefaults.standard.removeObject(forKey: lastPullKey)

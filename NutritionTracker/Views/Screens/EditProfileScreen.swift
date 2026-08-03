@@ -19,7 +19,7 @@ struct EditProfileScreen: View {
                 },
                 trailing: {
                     HStack(spacing: 16) {
-                        // Принудительная синхронизация (push + pull).
+                        // Forced sync (push + pull).
                         Button(action: {
                             guard !isSyncing else { return }
                             Task {
@@ -189,7 +189,7 @@ private struct ProfileDataTab: View {
                 }
                 .disabled(viewModel.isLoading)
 
-                // Удаление аккаунта (требование Apple). Необратимо.
+                // Account deletion (Apple requirement). Irreversible.
                 Button(role: .destructive, action: { showDeleteAccount = true }) {
                     Text("Удалить аккаунт")
                         .font(.subheadline)
@@ -238,7 +238,7 @@ private struct ProfileDataTab: View {
     /// When the user flips the unit toggle, convert whatever is currently entered
     /// into the new unit so the displayed values keep the same real measurement.
     private func repopulateFieldsForUnitChange(to newUnit: UnitSystem) {
-        // Interpret current fields in the OLD unit → canonical kg/cm.
+        // Interpret current fields in the OLD unit -> canonical kg/cm.
         let oldUnit: UnitSystem = (newUnit == .imperial) ? .metric : .imperial
         let (kg, cm) = currentBodyInCanonical(assuming: oldUnit)
         guard let kg, let cm else { return }  // leave as-is if input incomplete
@@ -289,9 +289,9 @@ private struct DailyNormsTab: View {
     @State private var editedValues: [String: String] = [:]
 
     // Grouping matches the Android app exactly (slices over allNutrientsList):
-    //   БЖУ и Калории       — first 5
-    //   Витамины            — next 13
-    //   Минералы и микро…   — the rest
+    //   Macros & Calories   — first 5
+    //   Vitamins            — next 13
+    //   Minerals & trace…   — the rest
     private var macroKeys: [(key: String, displayName: String, value: Double)] {
         let all = viewModel.dailyNorms?.allNutrientsList() ?? []
         return Array(all.prefix(5))

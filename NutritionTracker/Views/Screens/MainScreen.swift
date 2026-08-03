@@ -15,7 +15,7 @@ struct MainScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Кастомный зелёный хедер (без системных glass-капсул iOS 26).
+                // Custom green header (without the iOS 26 system glass capsules).
                 BrandHeader(
                     String(localized: "Nutrition Tracker"),
                     leading: {
@@ -143,7 +143,7 @@ struct MainScreen: View {
 
     private var foodInputSection: some View {
         VStack(spacing: 8) {
-            // Многострочное поле ввода (2-3 строки), как на Android.
+            // Multiline input field (2-3 lines), like on Android.
             TextField("Что вы съели?", text: $viewModel.foodInput, axis: .vertical)
                 .font(.body)
                 .lineLimit(2...3)
@@ -154,7 +154,7 @@ struct MainScreen: View {
                         .fill(AppColor.surface)
                 )
                 .overlay(
-                    // Рамка как Android OutlinedTextField: серая без фокуса, зелёная (толще) при фокусе.
+                    // Border like Android's OutlinedTextField: gray when unfocused, green (thicker) when focused.
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(
                             foodInputFocused ? AppColor.primary : AppColor.outline,
@@ -199,8 +199,8 @@ struct MainScreen: View {
                 .background(RoundedRectangle(cornerRadius: 12).fill(AppColor.surfaceContainerHigh))
             }
 
-            // Широкая кнопка "Добавить" снизу, как на Android.
-            // disabled → серая (Material filled Button), active → насыщенный зелёный.
+            // Wide "Add" button at the bottom, like on Android.
+            // disabled -> gray (Material filled Button), active -> rich green.
             let addDisabled = viewModel.foodInput.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isLoading
             Button(action: { viewModel.analyzeFood() }) {
                 HStack(spacing: 4) {
@@ -215,7 +215,7 @@ struct MainScreen: View {
             }
             .disabled(addDisabled)
 
-            // 3 равные outlined кнопки-иконки: Штрих-код / Фото (порядок как Android).
+            // 3 equal outlined icon buttons: Barcode / Photo (order as on Android).
             HStack(spacing: 8) {
                 NavigationLink(destination: BarcodeScannerScreen(viewModel: viewModel, mode: .food)) {
                     Image(systemName: "barcode.viewfinder")
@@ -243,11 +243,11 @@ struct MainScreen: View {
 
     private var foodEntriesTable: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Заголовок «Сегодня» крупным шрифтом НАД карточкой (как Android headlineMedium).
+            // "Today" title in a large font ABOVE the card (like Android headlineMedium).
             Text("Сегодня")
                 .font(.title2).bold()
 
-            // Кнопка редактирования справа под заголовком (как Android).
+            // Edit button on the right, below the title (like Android).
             HStack {
                 Spacer()
                 if !viewModel.todayEntries.isEmpty {
@@ -288,7 +288,7 @@ struct MainScreen: View {
                     .padding(.vertical, 12)
                     .cardStyle()
             } else {
-                // Header — зелёная плашка primaryContainer (как Android).
+                // Header — green primaryContainer bar (like Android).
                 HStack {
                     if editMode {
                         Spacer().frame(width: 24)
@@ -350,7 +350,7 @@ struct MainScreen: View {
                     }
                 }
 
-                // Totals — зелёная плашка secondaryContainer (как Android).
+                // Totals — green secondaryContainer bar (like Android).
                 HStack {
                     if editMode {
                         Spacer().frame(width: 24)
@@ -413,7 +413,7 @@ struct MainScreen: View {
 
     private var macrosSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Заголовок крупным шрифтом НАД карточкой (как Android headlineMedium).
+            // Title in a large font ABOVE the card (like Android headlineMedium).
             Text("Макронутриенты и калории")
                 .font(.title2).bold()
             let nutrients = viewModel.todayTotals.macrosList()

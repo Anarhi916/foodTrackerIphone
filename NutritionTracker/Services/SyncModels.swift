@@ -1,7 +1,7 @@
 import Foundation
 
-// DTO синхронизации. Время — epoch-миллисекунды (Int64), совпадает с бэкендом и Android.
-// deletedAt != nil → tombstone (запись удалена, синхронизируется).
+// Sync DTOs. Time is epoch milliseconds (Int64), matching the backend and Android.
+// deletedAt != nil -> tombstone (record deleted, synced).
 
 struct SyncProfileDTO: Codable {
     var gender: String

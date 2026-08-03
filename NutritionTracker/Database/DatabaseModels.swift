@@ -1,9 +1,9 @@
 import Foundation
 import SwiftData
 
-// Поля синхронизации (updatedAt/deletedAt) есть у всех моделей — см. sync-architecture.
-// FoodEntry дополнительно несёт clientId (uuid) — идемпотентный ключ на бэкенде.
-// SwiftData делает lightweight-миграцию автоматически (новые свойства со значениями по умолчанию).
+// Sync fields (updatedAt/deletedAt) exist on all models — see sync-architecture.
+// FoodEntry additionally carries clientId (uuid) — an idempotent key on the backend.
+// SwiftData performs a lightweight migration automatically (new properties with default values).
 
 @Model
 final class UserProfile {

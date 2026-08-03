@@ -1,20 +1,20 @@
 import SwiftUI
 import UIKit
 
-// Design-токены, зеркалящие Material 3 tonal-палитру Android (ui/theme/Color.kt).
-// Роли адаптивные (light/dark) через UIColor dynamic provider — dark-режим на iOS
-// продолжает работать и совпадает с Android md_dark_* схемой.
+// Design tokens mirroring Android's Material 3 tonal palette (ui/theme/Color.kt).
+// Roles are adaptive (light/dark) via a UIColor dynamic provider — dark mode on iOS
+// keeps working and matches the Android md_dark_* scheme.
 //
-// Соответствие ролей Android → iOS:
-//   md_primary               → AppColor.primary            (#1B9E3E)
-//   md_primaryContainer      → AppColor.primaryContainer   (#C8F0CF)
-//   md_background/surface    → AppColor.background/surface (#F6FBF4)
-//   md_surfaceVariant        → AppColor.surfaceVariant     (#DCE5DB) — поля ввода, дорожка прогресса
-//   md_surfaceContainer      → AppColor.surfaceContainer   (#EBF1E9) — обычная карточка
-//   md_surfaceContainerHigh  → AppColor.surfaceContainerHigh(#E5EBE3) — приподнятая карточка
-//   md_onSurface             → AppColor.onSurface          (#181D18)
-//   md_onSurfaceVariant      → AppColor.onSurfaceVariant   (#404942) — вторичный текст
-//   md_outline / Variant     → AppColor.outline / outlineVariant
+// Role mapping Android -> iOS:
+//   md_primary               -> AppColor.primary            (#1B9E3E)
+//   md_primaryContainer      -> AppColor.primaryContainer   (#C8F0CF)
+//   md_background/surface    -> AppColor.background/surface (#F6FBF4)
+//   md_surfaceVariant        -> AppColor.surfaceVariant     (#DCE5DB) — input fields, progress track
+//   md_surfaceContainer      -> AppColor.surfaceContainer   (#EBF1E9) — regular card
+//   md_surfaceContainerHigh  -> AppColor.surfaceContainerHigh(#E5EBE3) — elevated card
+//   md_onSurface             -> AppColor.onSurface          (#181D18)
+//   md_onSurfaceVariant      -> AppColor.onSurfaceVariant   (#404942) — secondary text
+//   md_outline / Variant     -> AppColor.outline / outlineVariant
 
 private func dyn(light: UInt32, dark: UInt32) -> Color {
     Color(UIColor { trait in
@@ -40,7 +40,7 @@ enum AppColor {
     static let primaryContainer   = dyn(light: 0xC8F0CF, dark: 0x00531A)
     static let onPrimaryContainer = dyn(light: 0x00390F, dark: 0xC8F0CF)
 
-    // Secondary (используется для «Итого»-строки таблицы, как md_secondaryContainer)
+    // Secondary (used for the table "Total" row, like md_secondaryContainer)
     static let secondaryContainer   = dyn(light: 0xD1E8D5, dark: 0x354B3B)
     static let onSecondaryContainer = dyn(light: 0x0C1F13, dark: 0xD1E8D5)
 
@@ -55,8 +55,8 @@ enum AppColor {
     static let onSurface        = dyn(light: 0x181D18, dark: 0xDFE4DB)
     static let onSurfaceVariant = dyn(light: 0x404942, dark: 0xC0C9BF)
 
-    // Disabled-состояние filled-кнопки (как Material 3: onSurface поверх surface).
-    // Заметно темнее фона секции, чтобы виден контур кнопки.
+    // Disabled state of a filled button (like Material 3: onSurface over surface).
+    // Noticeably darker than the section background so the button outline is visible.
     static let disabledContainer = dyn(light: 0xC4CDC3, dark: 0x2A2F29)
     static let onDisabled        = dyn(light: 0x6A736C, dark: 0x8A938B)
 
@@ -64,26 +64,26 @@ enum AppColor {
     static let outline        = dyn(light: 0x707972, dark: 0x8A938B)
     static let outlineVariant = dyn(light: 0xC0C9BF, dark: 0x404942)
 
-    // Прогресс-бары нутриентов (семантика, как ProgressGreen/Yellow/… на Android)
+    // Nutrient progress bars (semantics like ProgressGreen/Yellow/… on Android)
     static let progressGreen  = dyn(light: 0x2E9E34, dark: 0x5FCF66)
     static let progressYellow = dyn(light: 0xF5B700, dark: 0xF5C842)
     static let progressOrange = dyn(light: 0xF57C00, dark: 0xFF9A3D)
     static let progressRed    = dyn(light: 0xE53935, dark: 0xFF6B67)
 }
 
-// Единая шкала скруглений (совпадает с AppShapes на Android).
+// Unified corner-radius scale (matches AppShapes on Android).
 enum AppRadius {
     static let small: CGFloat = 12
-    static let medium: CGFloat = 16   // карточки
-    static let large: CGFloat = 20    // крупные контейнеры
+    static let medium: CGFloat = 16   // cards
+    static let large: CGFloat = 20    // large containers
     static let extraLarge: CGFloat = 28
 }
 
 // MARK: - Card style
 
 extension View {
-    /// Стандартная tonal-карточка: скругление medium (16), заданная поверхность, мягкая тень.
-    /// По умолчанию surfaceVariant (#DCE5DB) — совпадает с фоном секций на Android.
+    /// Standard tonal card: medium (16) corner radius, given surface, soft shadow.
+    /// Defaults to surfaceVariant (#DCE5DB) — matches the section background on Android.
     func cardStyle(
         _ container: Color = AppColor.surfaceVariant,
         radius: CGFloat = AppRadius.medium,
@@ -100,8 +100,8 @@ extension View {
         )
     }
 
-    /// Мягкое оформление тулбара модального листа: светлый фон навбара + бренд-зелёные
-    /// текст-кнопки. Без глобального зелёного и без тяжёлых тёмных «капсул» iOS 26.
+    /// Soft styling for a modal sheet's toolbar: light nav bar background + brand-green
+    /// text buttons. Without the global green and without the heavy dark iOS 26 "capsules".
     func sheetChrome() -> some View {
         self
             .toolbarBackground(AppColor.surface, for: .navigationBar)
