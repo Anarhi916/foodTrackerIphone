@@ -38,13 +38,21 @@ actor NetworkService {
         guard var http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
 
         // 401 → пробуем обновить сессию refresh-токеном и повторить один раз.
-        if http.statusCode == 401, await AuthManager.shared.tryRefresh() {
-            if let access = await AuthManager.shared.accessToken {
-                req.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization")
+        if http.statusCode == 401 {
+            // Аккаунт удалён с другого устройства → стираем локальные данные, на логин.
+            if let errObj = try? JSONDecoder().decode(BackendError.self, from: data),
+               errObj.error == "account_deleted" {
+                await AuthManager.shared.handleAccountDeleted()
+                throw APIError.httpError(statusCode: 401, body: "account_deleted")
             }
-            (data, response) = try await session.data(for: req)
-            guard let http2 = response as? HTTPURLResponse else { throw APIError.invalidResponse }
-            http = http2
+            if await AuthManager.shared.tryRefresh() {
+                if let access = await AuthManager.shared.accessToken {
+                    req.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization")
+                }
+                (data, response) = try await session.data(for: req)
+                guard let http2 = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+                http = http2
+            }
         }
         guard http.statusCode == 200 else {
             let bodyStr = String(data: data, encoding: .utf8) ?? ""
@@ -165,13 +173,20 @@ actor NetworkService {
         }
         var (data, response) = try await session.data(for: req)
         guard var http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
-        if http.statusCode == 401, await AuthManager.shared.tryRefresh() {
-            if let access = await AuthManager.shared.accessToken {
-                req.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization")
+        if http.statusCode == 401 {
+            if let errObj = try? JSONDecoder().decode(BackendError.self, from: data),
+               errObj.error == "account_deleted" {
+                await AuthManager.shared.handleAccountDeleted()
+                throw APIError.httpError(statusCode: 401, body: "account_deleted")
             }
-            (data, response) = try await session.data(for: req)
-            guard let http2 = response as? HTTPURLResponse else { throw APIError.invalidResponse }
-            http = http2
+            if await AuthManager.shared.tryRefresh() {
+                if let access = await AuthManager.shared.accessToken {
+                    req.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization")
+                }
+                (data, response) = try await session.data(for: req)
+                guard let http2 = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+                http = http2
+            }
         }
         guard http.statusCode == 200 else { throw APIError.invalidResponse }
         return try JSONDecoder().decode(SyncPullResponse.self, from: data)

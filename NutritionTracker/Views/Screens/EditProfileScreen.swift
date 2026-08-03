@@ -82,6 +82,7 @@ private struct ProfileDataTab: View {
     @State private var goals: String = ""
     @State private var localError: String?
     @State private var unitSystem: UnitSystem = UnitSystem.current
+    @State private var showDeleteAccount = false
 
     private var isImperial: Bool { unitSystem == .imperial }
 
@@ -187,8 +188,29 @@ private struct ProfileDataTab: View {
                         .cornerRadius(12)
                 }
                 .disabled(viewModel.isLoading)
+
+                // Удаление аккаунта (требование Apple). Необратимо.
+                Button(role: .destructive, action: { showDeleteAccount = true }) {
+                    Text("Удалить аккаунт")
+                        .font(.subheadline)
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+                .padding(.top, 8)
             }
             .padding()
+        }
+        .alert("Удалить аккаунт?", isPresented: $showDeleteAccount) {
+            Button("Отмена", role: .cancel) {}
+            Button("Удалить", role: .destructive) {
+                Task {
+                    await auth.deleteAccount()
+                    dismiss()
+                }
+            }
+        } message: {
+            Text("Аккаунт и все ваши данные будут удалены безвозвратно. Это действие нельзя отменить.")
         }
         .onAppear {
             if let profile = viewModel.userProfile {

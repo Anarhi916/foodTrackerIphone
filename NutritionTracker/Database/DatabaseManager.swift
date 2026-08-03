@@ -36,6 +36,23 @@ class DatabaseManager {
         container.mainContext
     }
 
+    /// Полное физическое удаление всех локальных данных пользователя.
+    /// Используется при выходе/удалении аккаунта (не soft delete).
+    func wipeAllLocalData() {
+        for entry in (try? context.fetch(FetchDescriptor<FoodEntry>())) ?? [] { context.delete(entry) }
+        for cache in (try? context.fetch(FetchDescriptor<FoodCache>())) ?? [] { context.delete(cache) }
+        for norms in (try? context.fetch(FetchDescriptor<DailyNorms>())) ?? [] { context.delete(norms) }
+        for profile in (try? context.fetch(FetchDescriptor<UserProfile>())) ?? [] { context.delete(profile) }
+        try? context.save()
+        // Чистим временные CSV-экспорты (история питания прошлого юзера).
+        let tmp = FileManager.default.temporaryDirectory
+        if let files = try? FileManager.default.contentsOfDirectory(at: tmp, includingPropertiesForKeys: nil) {
+            for f in files where f.pathExtension == "csv" {
+                try? FileManager.default.removeItem(at: f)
+            }
+        }
+    }
+
     // MARK: - User Profile
 
     func getProfile() -> UserProfile? {

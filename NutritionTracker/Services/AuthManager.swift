@@ -12,6 +12,9 @@ final class AuthManager: NSObject, ObservableObject {
     @Published private(set) var isSignedIn: Bool
     @Published var isBusy = false
     @Published var errorMessage: String?
+    // Ставится в true, когда аккаунт удалён с другого устройства — ContentView
+    // показывает уведомление и сбрасывает флаг.
+    @Published var accountDeletedNotice = false
 
     // Токены (актор NetworkService читает access через nonisolated-геттер ниже).
     private(set) var accessTokenValue: String?
@@ -54,6 +57,16 @@ final class AuthManager: NSObject, ObservableObject {
         isSignedIn = false
     }
 
+    // Аккаунт удалён с другого устройства (бэкенд вернул account_deleted).
+    // Стираем локальные данные и разлогиниваем — как при удалении на этом устройстве.
+    // Флаг ниже показывает пользователю уведомление перед возвратом на экран входа.
+    func handleAccountDeleted() {
+        DatabaseManager.shared.wipeAllLocalData()
+        SyncManager.shared.resetOnSignOut()
+        clearSession()
+        accountDeletedNotice = true
+    }
+
     // MARK: - Refresh (вызывается из NetworkService при 401)
 
     func tryRefresh() async -> Bool {
@@ -74,16 +87,29 @@ final class AuthManager: NSObject, ObservableObject {
         if let refresh = refreshTokenValue {
             await NetworkService.shared.logout(refreshToken: refresh)
         }
+        // ВАЖНО: стираем локальные данные и при обычном выходе, иначе при входе
+        // ДРУГОГО аккаунта на этом устройстве данные прошлого юзера и покажутся
+        // локально, и зальются на сервер нового аккаунта через pullOnLogin(since=0).
+        DatabaseManager.shared.wipeAllLocalData()
+        SyncManager.shared.resetOnSignOut()
         clearSession()
     }
 
     func deleteAccount() async {
-        guard let access = accessTokenValue else { clearSession(); return }
+        guard let access = accessTokenValue else {
+            DatabaseManager.shared.wipeAllLocalData()
+            SyncManager.shared.resetOnSignOut()
+            clearSession()
+            return
+        }
         do {
             try await NetworkService.shared.deleteAccount(accessToken: access)
         } catch {
             // даже при ошибке сети — локально разлогиниваем
         }
+        // Аккаунт удалён на сервере → стираем все локальные данные (не soft delete).
+        DatabaseManager.shared.wipeAllLocalData()
+        SyncManager.shared.resetOnSignOut()
         clearSession()
     }
 

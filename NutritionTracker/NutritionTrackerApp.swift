@@ -95,14 +95,22 @@ struct ContentView: View {
                 }
             }
         }
+        // Аккаунт удалён с другого устройства → уведомление, затем экран входа.
+        .alert("Аккаунт удалён", isPresented: $auth.accountDeletedNotice) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Ваш аккаунт был удалён. Войдите снова, чтобы продолжить.")
+        }
         // Полная загрузка данных при входе (busy indicator), затем перечитываем локальный VM.
         .onChange(of: auth.isSignedIn) { _, signedIn in
             if signedIn {
+                viewModel.reset()              // чистый старт для нового аккаунта
                 Task {
                     await sync.pullOnLogin()
                     viewModel.loadData()
                 }
             } else {
+                viewModel.reset()              // при разлогине/удалении гасим всё состояние
                 sync.resetOnSignOut()
             }
         }

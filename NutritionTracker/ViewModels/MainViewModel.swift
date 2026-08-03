@@ -60,6 +60,40 @@ class MainViewModel: ObservableObject {
         cachedFoods = repo.getAllCachedFoods()
     }
 
+    /// Полный сброс состояния при смене аккаунта (выход/удаление/account_deleted).
+    /// Чистит и transient/dialog/pending-поля, и in-memory копии данных из БД —
+    /// чтобы данные прошлого юзера не «протекли» в сессию следующего.
+    func reset() {
+        foodInput = ""
+        isLoading = false
+        errorMessage = nil
+        todayEntries = []
+        dailyNorms = nil
+        hasProfile = false
+        userProfile = nil
+        todayTotals = NutrientData()
+        recentDates = []
+        cachedFoods = []
+        showConfirmDialog = false
+        pendingFood = nil
+        pendingFoodWeight = 0
+        pendingFoodSource = "manual"
+        showEditDialog = false
+        editingEntry = nil
+        editWeight = ""
+        showBarcodeWeightDialog = false
+        barcodeProductName = nil
+        barcodeNutrientsPer100g = nil
+        barcodeWeight = "100"
+        importedSharedFood = nil
+        showPhotoEditDialog = false
+        photoFoodName = ""
+        photoOriginalFoodName = ""
+        photoWeight = "200"
+        photoNutrientsPer100g = nil
+        photoFoodNameEn = ""
+    }
+
     func refreshTodayData() {
         todayEntries = repo.getTodayEntries()
         todayTotals = todayEntries.reduce(NutrientData()) { acc, entry in
