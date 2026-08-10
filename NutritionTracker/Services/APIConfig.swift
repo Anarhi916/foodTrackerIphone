@@ -6,7 +6,7 @@ import Foundation
 struct APIConfig {
     // MARK: - Backend
     // dev: local server (the simulator sees the mac's localhost). prod: replace with the production URL.
-    static let backendBaseURL = "http://localhost:3000"
+    static let backendBaseURL = "https://api.nutritiontracker.uk"
 
     // Dev auth (X-Dev-Auth). In prod it's replaced by App Attest.
     // Must match DEV_AUTH_SECRET in backend/.env.
