@@ -66,6 +66,10 @@ struct ContentView: View {
     @EnvironmentObject var auth: AuthManager
     @StateObject private var sync = SyncManager.shared
     @Environment(\.scenePhase) private var scenePhase
+    // Keeps the branded splash up across the WHOLE login transition — the pull AND the
+    // subsequent local loadData() — so the splash never lifts for a frame between them
+    // (which would flash the login/onboarding screen underneath).
+    @State private var preparingSession = false
 
     var body: some View {
         Group {
@@ -78,23 +82,43 @@ struct ContentView: View {
             }
         }
         .overlay {
-            if sync.isInitialSyncing {
+            if sync.isInitialSyncing || preparingSession || auth.isAuthenticating {
+                // Полноэкранный брендовый сплэш поверх всего (скрывает экран входа под ним).
                 ZStack {
-                    Color.black.opacity(0.35).ignoresSafeArea()
-                    VStack(spacing: 14) {
+                    // Непрозрачный фон: сначала заливка бренд-цветом (гарантированно
+                    // перекрывает экран входа), сверху лёгкий градиент для объёма.
+                    AppColor.primary.ignoresSafeArea()
+                    LinearGradient(
+                        colors: [
+                            Color(.sRGB, red: 0x1B/255.0, green: 0x9E/255.0, blue: 0x3E/255.0),
+                            Color(.sRGB, red: 0x14/255.0, green: 0x7A/255.0, blue: 0x30/255.0)
+                        ],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                    .ignoresSafeArea()
+                    VStack(spacing: 20) {
+                        Image("LoginLogo")
+                            .resizable()
+                            .frame(width: 96, height: 96)
+                            .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+                        Text("Nutrition Tracker")
+                            .font(.title2).bold()
+                            .foregroundColor(.white)
                         ProgressView()
                             .controlSize(.large)
                             .tint(.white)
+                            .padding(.top, 4)
                         Text("Загружаем ваши данные...")
                             .font(.subheadline)
-                            .foregroundColor(.white)
+                            .foregroundColor(.white.opacity(0.9))
                     }
-                    .padding(28)
-                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(.black.opacity(0.5)))
                 }
+                // Insertion is a hard cut (opaque from frame 0 — no translucent fade-in that
+                // would reveal the login screen underneath); only the removal fades out.
+                .transition(.asymmetric(insertion: .identity, removal: .opacity))
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: sync.isInitialSyncing || preparingSession || auth.isAuthenticating)
         // Account deleted on another device -> notice, then the login screen.
         .alert("Аккаунт удалён", isPresented: $auth.accountDeletedNotice) {
             Button("OK", role: .cancel) {}
@@ -105,13 +129,21 @@ struct ContentView: View {
         .onChange(of: auth.isSignedIn) { _, signedIn in
             if signedIn {
                 viewModel.reset()              // clean start for the new account
+                preparingSession = true        // splash stays up through pull + local load
                 Task {
                     await sync.pullOnLogin()
                     viewModel.loadData()
+                    // One extra runloop hop so the populated MainScreen is committed
+                    // before the splash fades — no login/onboarding frame leaks through.
+                    await Task.yield()
+                    // Don't uncover onto LoginScreen if the pull hit a 401 that cleared the
+                    // session; in that case a later body with isSignedIn==false shows login.
+                    if auth.isSignedIn { preparingSession = false }
                 }
             } else {
                 viewModel.reset()              // on sign-out/deletion, clear all state
                 sync.resetOnSignOut()
+                preparingSession = false
             }
         }
         // Silent daily sync when the app enters the active state.

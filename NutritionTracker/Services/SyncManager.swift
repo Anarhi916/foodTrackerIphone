@@ -15,6 +15,7 @@ final class SyncManager: ObservableObject {
     private let lastPushKey = "sync.lastPushAt"
     private let lastPullKey = "sync.lastPullAt"
     private let lastDailyKey = "sync.lastDailySyncDay"
+    private let migratedKey = "sync.initialMigrationDone"
 
     private var lastPushAt: Int64 {
         get { Int64(UserDefaults.standard.integer(forKey: lastPushKey)) }
@@ -29,22 +30,32 @@ final class SyncManager: ObservableObject {
 
     func pullOnLogin() async {
         isInitialSyncing = true
-        defer { isInitialSyncing = false }
+        defer {
+            // Mark today's sync as done so the scenePhase.active dailySyncIfNeeded right
+            // after login doesn't fire a duplicate pull/push.
+            UserDefaults.standard.set(Self.dayString(Date()), forKey: lastDailyKey)
+            isInitialSyncing = false
+        }
         do {
             // 1) Pull everything from the server and merge (LWW).
             let resp = try await NetworkService.shared.syncPull(since: nil)
             DatabaseManager.shared.applyPulled(resp)
             lastPullAt = resp.serverTime
-            // 2) Push ALL local data (since=0) — important for upgrading legacy
-            //    users: their pre-login history/foods make it to the server.
-            let allLocal = DatabaseManager.shared.collectChanges(since: 0)
-            if allLocal.profile != nil || allLocal.norms != nil
-                || !allLocal.entries.isEmpty || !allLocal.foodCache.isEmpty {
-                let pushResp = try await NetworkService.shared.syncPush(allLocal)
+            // 2) Push local data. On the FIRST login on this install we push everything
+            //    (since=0) once — to migrate legacy pre-account local data. On later
+            //    logins we push only the delta, so we don't re-upload the whole history
+            //    (can be thousands of rows) on every sign-in.
+            let migrated = UserDefaults.standard.bool(forKey: migratedKey)
+            let pushSince: Int64 = migrated ? lastPushAt : 0
+            let local = DatabaseManager.shared.collectChanges(since: pushSince)
+            if local.profile != nil || local.norms != nil
+                || !local.entries.isEmpty || !local.foodCache.isEmpty {
+                let pushResp = try await NetworkService.shared.syncPush(local)
                 lastPushAt = pushResp.serverTime
             } else {
                 lastPushAt = resp.serverTime
             }
+            UserDefaults.standard.set(true, forKey: migratedKey)
         } catch {
             print("[sync] pullOnLogin failed: \(error)")
         }

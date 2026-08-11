@@ -11,6 +11,10 @@ final class AuthManager: NSObject, ObservableObject {
 
     @Published private(set) var isSignedIn: Bool
     @Published var isBusy = false
+    // True from the moment a sign-in is initiated (Apple/Google) until the session is
+    // stored (isSignedIn flips) or the attempt fails. Drives the branded splash so the
+    // login screen is never revealed during the OAuth callback + token-exchange window.
+    @Published private(set) var isAuthenticating = false
     @Published var errorMessage: String?
     // Set to true when the account is deleted on another device — ContentView
     // shows a notice and resets the flag.
@@ -47,6 +51,10 @@ final class AuthManager: NSObject, ObservableObject {
         refreshTokenValue = tokens.refreshToken
         KeychainService.set(tokens.accessToken, for: KeychainService.accessKey)
         KeychainService.set(tokens.refreshToken, for: KeychainService.refreshKey)
+        // Clear the cover flag in the SAME synchronous main-actor publish that flips
+        // isSignedIn, so ContentView's first body with isSignedIn==true still has a cover
+        // active (isAuthenticating→false and preparingSession→true hand off without a gap).
+        isAuthenticating = false
         isSignedIn = true
     }
 
@@ -126,6 +134,7 @@ final class AuthManager: NSObject, ObservableObject {
         controller.delegate = self
         controller.presentationContextProvider = self
         isBusy = true
+        isAuthenticating = true
         errorMessage = nil
         controller.performRequests()
     }
@@ -134,6 +143,7 @@ final class AuthManager: NSObject, ObservableObject {
 
     func signInWithGoogle() {
         isBusy = true
+        isAuthenticating = true
         errorMessage = nil
         let codeVerifier = Self.randomNonce(length: 43) // PKCE verifier (43-128 chars)
         let codeChallenge = Self.sha256Base64url(codeVerifier)
@@ -149,18 +159,22 @@ final class AuthManager: NSObject, ObservableObject {
             .init(name: "code_challenge",        value: codeChallenge),
             .init(name: "code_challenge_method", value: "S256"),
         ]
-        guard let authURL = comps.url else { isBusy = false; return }
+        guard let authURL = comps.url else { isBusy = false; isAuthenticating = false; return }
 
         let session = ASWebAuthenticationSession(url: authURL, callbackURLScheme: scheme) { [weak self] callback, error in
             guard let self else { return }
             Task { @MainActor in
-                self.isBusy = false
                 guard let callback,
                       let code = URLComponents(url: callback, resolvingAgainstBaseURL: false)?
                           .queryItems?.first(where: { $0.name == "code" })?.value else {
+                    // Cancelled or no code — drop the cover so LoginScreen is interactive again.
+                    self.isBusy = false
+                    self.isAuthenticating = false
                     if error != nil { self.errorMessage = "Вход через Google отменён" }
                     return
                 }
+                // Keep isBusy/isAuthenticating up THROUGH the token exchange so the splash
+                // stays over the login screen for the whole network round-trip.
                 await self.exchangeGoogleCode(code: code, codeVerifier: codeVerifier, redirectUri: redirectUri)
             }
         }
@@ -171,13 +185,15 @@ final class AuthManager: NSObject, ObservableObject {
     }
 
     private func exchangeGoogleCode(code: String, codeVerifier: String, redirectUri: String) async {
+        defer { isBusy = false }
         do {
             let tokens = try await NetworkService.shared.authGoogleCode(
                 code: code, codeVerifier: codeVerifier, redirectUri: redirectUri,
                 clientId: APIConfig.googleClientId
             )
-            store(tokens)
+            store(tokens)   // clears isAuthenticating in the same publish as isSignedIn=true
         } catch {
+            isAuthenticating = false
             errorMessage = "Не удалось войти через Google"
         }
     }
@@ -234,6 +250,7 @@ extension AuthManager: ASAuthorizationControllerDelegate {
               let identityToken = String(data: tokenData, encoding: .utf8),
               let rawNonce = currentAppleRawNonce else {
             isBusy = false
+            isAuthenticating = false
             errorMessage = "Apple не вернул токен"
             return
         }
@@ -241,8 +258,9 @@ extension AuthManager: ASAuthorizationControllerDelegate {
             defer { isBusy = false }
             do {
                 let tokens = try await NetworkService.shared.authApple(identityToken: identityToken, nonce: rawNonce)
-                store(tokens)
+                store(tokens)   // clears isAuthenticating in the same publish as isSignedIn=true
             } catch {
+                isAuthenticating = false
                 errorMessage = "Не удалось войти через Apple"
             }
         }
@@ -250,6 +268,7 @@ extension AuthManager: ASAuthorizationControllerDelegate {
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
         isBusy = false
+        isAuthenticating = false
         // User cancellation — don't show it as an error.
         if (error as? ASAuthorizationError)?.code != .canceled {
             errorMessage = "Вход через Apple не удался"
