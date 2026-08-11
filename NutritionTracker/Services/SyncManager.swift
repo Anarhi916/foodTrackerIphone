@@ -85,7 +85,20 @@ final class SyncManager: ObservableObject {
 
     private func sync(pushSince: Int64) async {
         guard AuthManager.shared.isSignedIn else { return }
-        // 1) PUSH
+        // 1) PULL first — must run BEFORE push. If we pushed first, the pull that
+        // immediately follows would return our OWN just-pushed rows (stamped with the
+        // latest server time), inflating lastPullAt to ~now and skipping over another
+        // device's older rows that were uploaded but not yet covered by our cursor —
+        // stranding them behind the cursor forever. pullOnLogin already pulls-then-pushes.
+        do {
+            let since = lastPullAt > 0 ? lastPullAt : nil
+            let resp = try await NetworkService.shared.syncPull(since: since)
+            DatabaseManager.shared.applyPulled(resp)
+            lastPullAt = resp.serverTime
+        } catch {
+            print("[sync] pull failed: \(error)")
+        }
+        // 2) PUSH
         do {
             let changes = DatabaseManager.shared.collectChanges(since: pushSince)
             if changes.profile != nil || changes.norms != nil
@@ -95,15 +108,6 @@ final class SyncManager: ObservableObject {
             }
         } catch {
             print("[sync] push failed: \(error)")
-        }
-        // 2) PULL — delta since the last pull.
-        do {
-            let since = lastPullAt > 0 ? lastPullAt : nil
-            let resp = try await NetworkService.shared.syncPull(since: since)
-            DatabaseManager.shared.applyPulled(resp)
-            lastPullAt = resp.serverTime
-        } catch {
-            print("[sync] pull failed: \(error)")
         }
     }
 
