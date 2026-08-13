@@ -488,14 +488,12 @@ struct AddCustomDishSheet: View {
 
         let suggestions: [FoodCache] = {
             guard ing.name.count >= 2, ing.cachedFood == nil, focusedIngredient == idx else { return [] }
-            let q = ing.name.lowercased()
-            let translit = transliterateToLatin(q)
-            return viewModel.cachedFoods.filter {
-                $0.keyOriginal.lowercased().contains(q)
-                || $0.keyEn.lowercased().contains(q)
-                || $0.keyOriginal.lowercased().contains(translit)
-                || $0.keyEn.lowercased().contains(translit)
-            }.prefix(5).map { $0 }
+            return rankFoodSuggestions(
+                query: ing.name,
+                items: viewModel.cachedFoods,
+                keyOriginal: { $0.keyOriginal },
+                keyEn: { $0.keyEn }
+            )
         }()
 
         VStack(alignment: .leading, spacing: 0) {

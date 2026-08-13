@@ -132,13 +132,12 @@ struct MainScreen: View {
     private var suggestions: [FoodCache] {
         let input = viewModel.foodInput.lowercased()
         guard input.count >= 2, foodInputFocused else { return [] }
-        let translit = transliterateToLatin(input)
-        return viewModel.cachedFoods.filter { cache in
-            cache.keyOriginal.lowercased().contains(input)
-            || cache.keyEn.lowercased().contains(input)
-            || cache.keyOriginal.lowercased().contains(translit)
-            || cache.keyEn.lowercased().contains(translit)
-        }.prefix(5).map { $0 }
+        return rankFoodSuggestions(
+            query: input,
+            items: viewModel.cachedFoods,
+            keyOriginal: { $0.keyOriginal },
+            keyEn: { $0.keyEn }
+        )
     }
 
     private var foodInputSection: some View {
