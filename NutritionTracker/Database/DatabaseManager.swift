@@ -177,11 +177,6 @@ class DatabaseManager {
             return
         }
 
-        if !keyOriginal.hasPrefix("barcode:") {
-            let desc2 = FetchDescriptor<FoodCache>(predicate: #Predicate { $0.keyEnNormalized == normalizedEn && $0.deletedAt == nil })
-            if (try? context.fetch(desc2).first) != nil { return }
-        }
-
         let json = encodeNutrients(nutrientsPer100g)
         let entry = FoodCache(keyOriginal: keyOriginal, keyNormalized: normalized, keyEn: keyEn, keyEnNormalized: normalizedEn, nutrientsPer100gJson: json)
         context.insert(entry)

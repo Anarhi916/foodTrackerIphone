@@ -219,15 +219,19 @@ private struct NutrientStatCard: View {
 
             ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                 let normValue = normItems?.indices.contains(index) == true ? normItems![index].value : nil
-                let pct: Int? = {
+                let ratio: Double? = {
                     guard let nv = normValue, nv > 0 else { return nil }
-                    return Int(item.value / nv * 100)
+                    return item.value / nv
                 }()
+                let pct: Int? = ratio.map { Int($0 * 100) }
                 let pctColor: Color = {
-                    guard let p = pct else { return .primary }
-                    if p >= 90 { return AppColor.primary }
-                    if p >= 50 { return .primary }
-                    return .red
+                    guard let r = ratio else { return .primary }
+                    let upper = NutrientLimits.upperRatio(for: item.key)
+                    if r > upper * 1.3 { return AppColor.progressRed }
+                    if r > upper       { return AppColor.progressOrange }
+                    if r >= 0.8        { return AppColor.progressGreen }
+                    if r >= 0.4        { return AppColor.progressYellow }
+                    return AppColor.progressRed
                 }()
 
                 HStack {

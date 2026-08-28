@@ -132,8 +132,9 @@ struct MainScreen: View {
     private var suggestions: [FoodCache] {
         let input = viewModel.foodInput.lowercased()
         guard input.count >= 2, foodInputFocused else { return [] }
+        let query = WeightParser.parse(input).name.trimmingCharacters(in: .whitespaces)
         return rankFoodSuggestions(
-            query: input,
+            query: query.isEmpty ? input : query,
             items: viewModel.cachedFoods,
             keyOriginal: { $0.keyOriginal },
             keyEn: { $0.keyEn }
@@ -318,9 +319,6 @@ struct MainScreen: View {
                             .frame(width: 24)
                         }
                         HStack(spacing: 4) {
-                            if entry.fromCache {
-                                Circle().fill(Color.orange).frame(width: 6, height: 6)
-                            }
                             Text(entry.foodName).font(.caption2).fixedSize(horizontal: false, vertical: true)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)

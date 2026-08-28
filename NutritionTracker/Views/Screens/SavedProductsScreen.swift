@@ -414,6 +414,8 @@ struct AddCustomDishSheet: View {
     @State private var ingredients: [IngredientInput] = [IngredientInput()]
     @State private var isProcessing = false
     @State private var errorMessage: String?
+    @State private var isShowingScanner = false
+    @State private var scanningIngredientIdx: Int = 0
     @FocusState private var focusedIngredient: Int?
 
     private var canSave: Bool {
@@ -440,6 +442,24 @@ struct AddCustomDishSheet: View {
                         ForEach(ingredients.indices, id: \.self) { idx in
                             ingredientRow(idx: idx)
                         }
+
+                        Button { addIngredient() } label: {
+                            Label(String(localized: "Добавить ингредиент"), systemImage: "plus")
+                                .font(.subheadline)
+                                .foregroundColor(AppColor.primary)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 2)
+
+                        Button {
+                            scanningIngredientIdx = -1
+                            isShowingScanner = true
+                        } label: {
+                            Label(String(localized: "Сканировать штрихкод"), systemImage: "barcode.viewfinder")
+                                .font(.subheadline)
+                                .foregroundColor(AppColor.primary)
+                        }
+                        .buttonStyle(.plain)
 
                         if let error = errorMessage {
                             Text(error)
@@ -478,13 +498,28 @@ struct AddCustomDishSheet: View {
                 }
             }
             .sheetChrome()
+            .sheet(isPresented: $isShowingScanner) {
+                let capturedIdx = scanningIngredientIdx
+                NavigationStack {
+                    BarcodeScannerScreen(viewModel: viewModel, mode: .ingredient { barcode in
+                        Task { @MainActor in
+                            guard let result = await viewModel.lookupBarcodeForIngredient(barcode) else { return }
+                            if capturedIdx == -1 {
+                                ingredients.append(IngredientInput(name: result.name, cachedFood: result.cache))
+                            } else if capturedIdx < ingredients.count {
+                                ingredients[capturedIdx].name = result.name
+                                ingredients[capturedIdx].cachedFood = result.cache
+                            }
+                        }
+                    })
+                }
+            }
         }
     }
 
     @ViewBuilder
     private func ingredientRow(idx: Int) -> some View {
         let ing = ingredients[idx]
-        let isLast = idx == ingredients.indices.last
 
         let suggestions: [FoodCache] = {
             guard ing.name.count >= 2, ing.cachedFood == nil, focusedIngredient == idx else { return [] }
@@ -514,14 +549,7 @@ struct AddCustomDishSheet: View {
                 .keyboardType(.decimalPad)
                 .frame(width: 70)
 
-                if isLast == true {
-                    Button { addIngredient() } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(AppColor.primary)
-                    }
-                    .buttonStyle(.plain)
-                } else {
+                if ingredients.count > 1 {
                     Button { removeIngredient(ing.id) } label: {
                         Image(systemName: "minus.circle.fill")
                             .font(.title2)

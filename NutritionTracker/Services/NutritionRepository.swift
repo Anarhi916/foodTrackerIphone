@@ -210,6 +210,12 @@ class NutritionRepository {
         return (name, enriched.nutrientsPer100g, false)
     }
 
+    func lookupBarcodeForIngredient(_ barcode: String) async -> (name: String, cache: FoodCache?)? {
+        guard let result = try? await lookupBarcodeWithCache(barcode) else { return nil }
+        let cache = db.findInCache(key: result.name) ?? db.findInCache(key: "barcode:\(barcode)")
+        return (result.name, cache)
+    }
+
     /// Micronutrient enrichment via the backend /v1/food/enrich (used in the photo flow
     /// when the name is unchanged). The backend fills in missing micros + fats.
     func enrichMicrosWithAIPublic(_ nutrients: NutrientData, foodNameEn: String) async -> NutrientData {

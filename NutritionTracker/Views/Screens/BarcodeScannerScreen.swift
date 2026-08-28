@@ -3,6 +3,7 @@ import AVFoundation
 
 enum BarcodeScanMode {
     case food
+    case ingredient(onScanned: (String) -> Void)
 }
 
 struct BarcodeScannerScreen: View {
@@ -36,7 +37,12 @@ struct BarcodeScannerScreen: View {
                     guard scannedBarcode == nil else { return }
                     readyToScan = false
                     scannedBarcode = barcode
-                    viewModel.onBarcodeScanned(barcode)
+                    switch mode {
+                    case .food:
+                        viewModel.onBarcodeScanned(barcode)
+                    case .ingredient(let callback):
+                        callback(barcode)
+                    }
                     dismiss()
                 }
                 .ignoresSafeArea()

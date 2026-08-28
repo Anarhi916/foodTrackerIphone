@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		01B492C8C69A724C0B33199B /* NutritionTrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C52FC98D1E411D3D1B50F5 /* NutritionTrackerApp.swift */; };
+		01DEF2749388A967D5DACE75 /* AppAttestService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51F80F5A5E18EF1B4A1F65B9 /* AppAttestService.swift */; };
 		06165740F7405B5387CBA385 /* NutrientProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1385FF6147B5B0FC726AEA8A /* NutrientProgressView.swift */; };
 		1EC2D9F3E6CDEBDFDED5CBDE /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A41AB301EE4464F8BF5C2AC /* APIConfig.swift */; };
 		24C82E8FBA5AF64D22A759C0 /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5380C3870354411AA5A9B5FF /* Config.plist */; };
@@ -59,6 +60,7 @@
 		36069CC7A970AF71C89C08AC /* MainScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainScreen.swift; sourceTree = "<group>"; };
 		49C8BD45C28AE063C1F107E5 /* NutrientData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientData.swift; sourceTree = "<group>"; };
 		4A432689EFC6A494EFB55726 /* FoodModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodModels.swift; sourceTree = "<group>"; };
+		51F80F5A5E18EF1B4A1F65B9 /* AppAttestService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAttestService.swift; sourceTree = "<group>"; };
 		53425435C67B97BE4FFF328C /* LanguagePickerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguagePickerButton.swift; sourceTree = "<group>"; };
 		5380C3870354411AA5A9B5FF /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Config.plist; sourceTree = "<group>"; };
 		544A42877CE36068FF09C2D0 /* Config.plist.example */ = {isa = PBXFileReference; path = Config.plist.example; sourceTree = "<group>"; };
@@ -205,6 +207,7 @@
 			children = (
 				6A41AB301EE4464F8BF5C2AC /* APIConfig.swift */,
 				EF4B9D2C224977FA28A24EBD /* APIModels.swift */,
+				51F80F5A5E18EF1B4A1F65B9 /* AppAttestService.swift */,
 				352C7B851D2FC64617029FCE /* AuthManager.swift */,
 				9BDD2F794EEA1A1E2C21B8ED /* FoodShare.swift */,
 				BF7F5C566B0005837617CC3B /* KeychainService.swift */,
@@ -298,6 +301,7 @@
 			files = (
 				1EC2D9F3E6CDEBDFDED5CBDE /* APIConfig.swift in Sources */,
 				9D2ED9C4EDE6E811299628B3 /* APIModels.swift in Sources */,
+				01DEF2749388A967D5DACE75 /* AppAttestService.swift in Sources */,
 				6EAC32D18E2F196F43480BCA /* AuthManager.swift in Sources */,
 				95BCC993BA8623B150266E1C /* BarcodeScannerScreen.swift in Sources */,
 				2CD16F0A7F87FE378FC8CF8D /* BrandHeader.swift in Sources */,

@@ -75,18 +75,41 @@ final class AuthManager: NSObject, ObservableObject {
         accountDeletedNotice = true
     }
 
+    // Session became invalid server-side (e.g. refresh succeeded but the retried
+    // request still returned 401 — token revoked). Drop tokens and return to Login,
+    // but DON'T wipe local data: the account still exists, the same user re-logs in
+    // and keeps their diary. (A cross-account wipe only happens on explicit signOut.)
+    func invalidateSession() {
+        clearSession()
+    }
+
     // MARK: - Refresh (called from NetworkService on 401)
 
+    // Coalesces concurrent refreshes into one in-flight request. Because this type is
+    // @MainActor, the check-and-store below is atomic (no await between them), so N
+    // simultaneous 401s all await the SAME rotation instead of each spending the
+    // single-use refresh token and racing each other into a forced sign-out.
+    private var refreshTask: Task<Bool, Never>?
+
     func tryRefresh() async -> Bool {
-        guard let refresh = refreshTokenValue else { return false }
-        do {
-            let tokens = try await NetworkService.shared.refreshSession(refreshToken: refresh)
-            store(tokens)
-            return true
-        } catch {
-            clearSession()
-            return false
+        if let existing = refreshTask {
+            return await existing.value
         }
+        let task = Task { () -> Bool in
+            guard let refresh = refreshTokenValue else { return false }
+            do {
+                let tokens = try await NetworkService.shared.refreshSession(refreshToken: refresh)
+                store(tokens)
+                return true
+            } catch {
+                clearSession()
+                return false
+            }
+        }
+        refreshTask = task
+        let result = await task.value
+        refreshTask = nil
+        return result
     }
 
     // MARK: - Sign out / delete

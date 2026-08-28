@@ -34,6 +34,7 @@ actor NetworkService {
         }
         req.httpBody = try JSONEncoder().encode(body)
 
+        await applyAttestation(to: &req)
         var (data, response) = try await session.data(for: req)
         guard var http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
 
@@ -49,9 +50,15 @@ actor NetworkService {
                 if let access = await AuthManager.shared.accessToken {
                     req.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization")
                 }
+                await applyAttestation(to: &req)
                 (data, response) = try await session.data(for: req)
                 guard let http2 = response as? HTTPURLResponse else { throw APIError.invalidResponse }
                 http = http2
+                // Refresh succeeded yet the retry is still 401 → the session is invalid
+                // (e.g. server-side revocation). Drop it and return the user to Login.
+                if http.statusCode == 401 {
+                    await AuthManager.shared.invalidateSession()
+                }
             }
         }
         guard http.statusCode == 200 else {
@@ -140,17 +147,54 @@ actor NetworkService {
         _ = try? await authPost("/v1/auth/logout", body: RefreshRequest(refreshToken: refreshToken)) as OkResponse
     }
 
+    // MARK: - App Attest (attestation headers on protected /v1/* requests)
+
+    // Attach fresh App Attest headers when available (real device, prod). On the Simulator or
+    // any failure this is a no-op and the request rides on X-Dev-Auth (dev-mode backend only).
+    // MUST be called right before each send: an assertion's signCount is single-use, so a retry
+    // needs a newly generated assertion or the backend rejects it as a replay.
+    private func applyAttestation(to req: inout URLRequest) async {
+        if let headers = await AppAttestService.shared.attestationHeaders() {
+            for (key, value) in headers { req.setValue(value, forHTTPHeaderField: key) }
+        }
+    }
+
+    // POST /v1/attest/challenge -> one-time challenge for App Attest enrollment. Public endpoint
+    // (mounted before authMiddleware), so it rides on dev auth only — no attestation headers.
+    func attestChallenge() async throws -> String {
+        let res: AttestChallengeResponse = try await authPost(
+            "/v1/attest/challenge", body: AttestChallengeRequest(platform: "ios"))
+        return res.challenge
+    }
+
+    // POST /v1/attest/apple/register -> verify+store the device public key. Throws on 400.
+    func attestRegister(keyId: String, attestation: String, challenge: String) async throws {
+        let _: OkResponse = try await authPost(
+            "/v1/attest/apple/register",
+            body: AttestRegisterRequest(keyId: keyId, attestation: attestation, challenge: challenge))
+    }
+
     func deleteAccount(accessToken: String) async throws {
         let url = URL(string: "\(APIConfig.backendBaseURL)/v1/auth/account")!
-        var req = URLRequest(url: url)
-        req.httpMethod = "DELETE"
-        req.setValue(APIConfig.devAuthSecret, forHTTPHeaderField: "X-Dev-Auth")
-        req.setValue("ios", forHTTPHeaderField: "X-Platform")
-        req.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        let (_, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw APIError.invalidResponse
+        func makeRequest(_ token: String) -> URLRequest {
+            var req = URLRequest(url: url)
+            req.httpMethod = "DELETE"
+            req.setValue(APIConfig.devAuthSecret, forHTTPHeaderField: "X-Dev-Auth")
+            req.setValue("ios", forHTTPHeaderField: "X-Platform")
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            return req
         }
+        var (_, response) = try await session.data(for: makeRequest(accessToken))
+        guard var http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        // Access token may simply be expired: refresh once and retry, so the account
+        // actually gets deleted server-side instead of only being wiped locally.
+        if http.statusCode == 401, await AuthManager.shared.tryRefresh(),
+           let newAccess = await AuthManager.shared.accessToken {
+            (_, response) = try await session.data(for: makeRequest(newAccess))
+            guard let http2 = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+            http = http2
+        }
+        guard http.statusCode == 200 else { throw APIError.invalidResponse }
     }
 
     // MARK: - Sync (/v1/sync/*)
@@ -171,6 +215,7 @@ actor NetworkService {
         if let access = await AuthManager.shared.accessToken {
             req.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization")
         }
+        await applyAttestation(to: &req)
         var (data, response) = try await session.data(for: req)
         guard var http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
         if http.statusCode == 401 {
@@ -183,9 +228,13 @@ actor NetworkService {
                 if let access = await AuthManager.shared.accessToken {
                     req.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization")
                 }
+                await applyAttestation(to: &req)
                 (data, response) = try await session.data(for: req)
                 guard let http2 = response as? HTTPURLResponse else { throw APIError.invalidResponse }
                 http = http2
+                if http.statusCode == 401 {
+                    await AuthManager.shared.invalidateSession()
+                }
             }
         }
         guard http.statusCode == 200 else { throw APIError.invalidResponse }
@@ -308,6 +357,23 @@ struct TokenResponse: Decodable {
 
 struct OkResponse: Decodable {
     let ok: Bool
+}
+
+// MARK: - App Attest models
+
+struct AttestChallengeRequest: Encodable {
+    let platform: String
+}
+
+struct AttestChallengeResponse: Decodable {
+    let challenge: String
+    let expiresIn: Int
+}
+
+struct AttestRegisterRequest: Encodable {
+    let keyId: String
+    let attestation: String
+    let challenge: String
 }
 
 // MARK: - Errors

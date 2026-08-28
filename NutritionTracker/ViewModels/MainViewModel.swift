@@ -203,7 +203,6 @@ class MainViewModel: ObservableObject {
     // MARK: - Barcode
 
     func onBarcodeScanned(_ barcode: String) {
-        // If the scanned code is actually a NutriTrack share QR, parse and import.
         // This lets the same "Scan" flow work for both product barcodes and shared foods.
         if let url = URL(string: barcode), let shared = FoodShare.parseShareLink(url) {
             importedSharedFood = shared
@@ -227,6 +226,10 @@ class MainViewModel: ObservableObject {
                 errorMessage = String(format: String(localized: "Ошибка поиска: %@"), error.localizedDescription)
             }
         }
+    }
+
+    func lookupBarcodeForIngredient(_ barcode: String) async -> (name: String, cache: FoodCache?)? {
+        await repo.lookupBarcodeForIngredient(barcode)
     }
 
     func confirmBarcodeAdd() {
