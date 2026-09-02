@@ -22,6 +22,7 @@ class MainViewModel: ObservableObject {
     // Dialogs
     @Published var showConfirmDialog: Bool = false
     @Published var pendingFood: FoodAnalysisResult?
+    @Published var pendingFoodOriginalInput: String = ""
     @Published var pendingFoodWeight: Double = 0
     @Published var pendingFoodSource: String = "manual"
 
@@ -76,6 +77,7 @@ class MainViewModel: ObservableObject {
         cachedFoods = []
         showConfirmDialog = false
         pendingFood = nil
+        pendingFoodOriginalInput = ""
         pendingFoodWeight = 0
         pendingFoodSource = "manual"
         showEditDialog = false
@@ -125,6 +127,7 @@ class MainViewModel: ObservableObject {
                 if results.count == 1 {
                     let result = results[0]
                     pendingFood = result
+                    pendingFoodOriginalInput = input
                     pendingFoodWeight = result.weightGrams > 0 ? result.weightGrams : extractWeight(from: input)
                     pendingFoodSource = "manual"
                     cachedFoods = repo.getAllCachedFoods()
@@ -155,9 +158,11 @@ class MainViewModel: ObservableObject {
             nutrients = food.nutrients
         }
 
-        repo.addFoodEntry(foodName: food.foodName, foodNameEn: food.foodNameEn, weightGrams: newWeight, nutrients: nutrients, source: pendingFoodSource, fromCache: food.fromCache)
+        let foodName = pendingFoodOriginalInput.isEmpty ? food.foodName : pendingFoodOriginalInput
+        repo.addFoodEntry(foodName: foodName, foodNameEn: food.foodNameEn, weightGrams: newWeight, nutrients: nutrients, source: pendingFoodSource, fromCache: food.fromCache)
         showConfirmDialog = false
         pendingFood = nil
+        pendingFoodOriginalInput = ""
         foodInput = ""
         refreshTodayData()
     }
@@ -165,6 +170,7 @@ class MainViewModel: ObservableObject {
     func dismissConfirmDialog() {
         showConfirmDialog = false
         pendingFood = nil
+        pendingFoodOriginalInput = ""
     }
 
     // MARK: - Entry Management

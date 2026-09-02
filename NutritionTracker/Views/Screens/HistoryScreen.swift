@@ -95,6 +95,7 @@ struct HistoryScreen: View {
                             (String(localized: "Белки"), totals.protein, norms.protein, String(localized: "г"), 1.5),
                             (String(localized: "Жиры"), totals.fat, norms.fat, String(localized: "г"), 1.5),
                             (String(localized: "Углеводы"), totals.carbs, norms.carbs, String(localized: "г"), 1.5),
+                            (String(localized: "Клетчатка"), totals.fiber, norms.fiber, String(localized: "г"), 1.5),
                             (String(localized: "Насыщ. жиры"), totals.saturatedFat, norms.saturatedFat, String(localized: "г"), 1.0),
                             (String(localized: "Мононенасыщ."), totals.monounsaturatedFat, norms.monounsaturatedFat, String(localized: "г"), 3.0),
                             (String(localized: "Полиненасыщ."), totals.polyunsaturatedFat, norms.polyunsaturatedFat, String(localized: "г"), 3.0),

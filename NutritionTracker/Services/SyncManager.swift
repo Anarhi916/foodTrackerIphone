@@ -68,13 +68,14 @@ final class SyncManager: ObservableObject {
         guard AuthManager.shared.isSignedIn else { return }
         let today = Self.dayString(Date())
         if UserDefaults.standard.string(forKey: lastDailyKey) == today { return }
-        await backgroundSync()
-        UserDefaults.standard.set(today, forKey: lastDailyKey)
+        let synced = await backgroundSync()
+        if synced { UserDefaults.standard.set(today, forKey: lastDailyKey) }
     }
 
-    /// Push the delta, then pull the delta. Silent, no indicator.
-    func backgroundSync() async {
-        await sync(pushSince: lastPushAt)
+    /// Push the delta, then pull the delta. Silent, no indicator. Returns true if at least one succeeded.
+    @discardableResult
+    func backgroundSync() async -> Bool {
+        return await sync(pushSince: lastPushAt)
     }
 
     /// Forced full sync (button in the profile): push EVERYTHING (since=0),
@@ -83,8 +84,10 @@ final class SyncManager: ObservableObject {
         await sync(pushSince: 0)
     }
 
-    private func sync(pushSince: Int64) async {
-        guard AuthManager.shared.isSignedIn else { return }
+    @discardableResult
+    private func sync(pushSince: Int64) async -> Bool {
+        guard AuthManager.shared.isSignedIn else { return false }
+        var ok = false
         // 1) PULL first — must run BEFORE push. If we pushed first, the pull that
         // immediately follows would return our OWN just-pushed rows (stamped with the
         // latest server time), inflating lastPullAt to ~now and skipping over another
@@ -95,6 +98,7 @@ final class SyncManager: ObservableObject {
             let resp = try await NetworkService.shared.syncPull(since: since)
             DatabaseManager.shared.applyPulled(resp)
             lastPullAt = resp.serverTime
+            ok = true
         } catch {
             print("[sync] pull failed: \(error)")
         }
@@ -105,10 +109,12 @@ final class SyncManager: ObservableObject {
                 || !changes.entries.isEmpty || !changes.foodCache.isEmpty {
                 let resp = try await NetworkService.shared.syncPush(changes)
                 lastPushAt = resp.serverTime
+                ok = true
             }
         } catch {
             print("[sync] push failed: \(error)")
         }
+        return ok
     }
 
     // Reset markers on sign-out — a new user on this device syncs from scratch.

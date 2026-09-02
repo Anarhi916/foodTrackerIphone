@@ -195,8 +195,9 @@ class NutritionRepository {
         let response = try await network.lookupBarcode(barcode)
         guard let product = response.product else { return nil }
         let name = [product.productNameRu, product.productNameUk, product.productNameEn, product.productName, product.brands]
-            .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
-            .first(where: { !$0.isEmpty }) ?? String(localized: "Неизвестный продукт")
+            .compactMap { sanitizeOFFName($0) }
+            .first
+        guard let name else { return nil }
 
         let offPer100g = nutrientsFromOFF(product.nutriments)
 
@@ -242,6 +243,13 @@ class NutritionRepository {
     }
 
     /// OFF nutriments -> NutrientData (per 100g). The client parses the OFF response itself.
+    // Rejects vandalized/garbage OFF product names. Real food names are short and don't contain "!".
+    private func sanitizeOFFName(_ raw: String?) -> String? {
+        guard let t = raw?.trimmingCharacters(in: .whitespaces), !t.isEmpty else { return nil }
+        if t.count > 80 || t.contains("!") { return nil }
+        return t
+    }
+
     private func nutrientsFromOFF(_ n: OFFNutriments?) -> NutrientData {
         NutrientData(
             calories: n?.energyKcal100g ?? 0, protein: n?.proteins100g ?? 0,
