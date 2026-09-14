@@ -4,7 +4,11 @@ struct HistoryScreen: View {
     @ObservedObject var viewModel: MainViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var expandedDates: Set<String> = []
+    @State private var editingDates: Set<String> = []
+    @State private var editedWeights: [String: [FoodEntry: String]] = [:]
     @State private var allDates: [String] = []
+    @State private var showAddFoodSheet = false
+    @State private var addFoodTargetDate = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,41 +38,96 @@ struct HistoryScreen: View {
         }
         .navigationBarHidden(true)
         .onAppear { allDates = NutritionRepository.shared.getAllDates() }
+        .sheet(isPresented: $showAddFoodSheet) {
+            AddFoodToDateView(date: addFoodTargetDate, viewModel: viewModel) {
+                showAddFoodSheet = false
+            }
+        }
     }
 
     private func dayCard(for date: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button(action: {
-                withAnimation {
-                    if expandedDates.contains(date) {
-                        expandedDates.remove(date)
-                    } else {
-                        expandedDates.insert(date)
+        let isExpanded = expandedDates.contains(date)
+        let isEditing = editingDates.contains(date)
+        let entries = viewModel.getEntriesForDate(date)
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Button(action: {
+                    withAnimation {
+                        if expandedDates.contains(date) {
+                            expandedDates.remove(date)
+                            editingDates.remove(date)
+                            editedWeights.removeValue(forKey: date)
+                        } else {
+                            expandedDates.insert(date)
+                        }
+                    }
+                }) {
+                    HStack {
+                        Text(formatDate(date))
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        Spacer()
                     }
                 }
-            }) {
-                HStack {
-                    Text(formatDate(date))
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    Spacer()
-                    Image(systemName: expandedDates.contains(date) ? "chevron.up" : "chevron.down")
-                        .foregroundColor(.secondary)
+                if isExpanded {
+                    if isEditing {
+                        Button("Отмена") {
+                            editedWeights.removeValue(forKey: date)
+                            editingDates.remove(date)
+                        }
+                        .font(.subheadline)
+                        Button("Сохранить") {
+                            saveWeights(for: date, entries: entries)
+                        }
+                        .font(.subheadline)
+                        .bold()
+                    } else {
+                        Button(action: {
+                            editedWeights[date] = Dictionary(uniqueKeysWithValues: entries.map {
+                                ($0, String(Int($0.weightGrams)))
+                            })
+                            editingDates.insert(date)
+                        }) {
+                            Image(systemName: "pencil")
+                                .foregroundColor(AppColor.primary)
+                        }
+                    }
                 }
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .foregroundColor(.secondary)
+                    .onTapGesture {
+                        withAnimation {
+                            if expandedDates.contains(date) {
+                                expandedDates.remove(date)
+                                editingDates.remove(date)
+                                editedWeights.removeValue(forKey: date)
+                            } else {
+                                expandedDates.insert(date)
+                            }
+                        }
+                    }
             }
 
-            if expandedDates.contains(date) {
-                let entries = viewModel.getEntriesForDate(date)
+            if isExpanded {
                 if entries.isEmpty {
                     Text("Нет записей")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                    if isEditing {
+                        Button(action: {
+                            addFoodTargetDate = date
+                            showAddFoodSheet = true
+                        }) {
+                            Label("Добавить", systemImage: "plus")
+                                .font(.subheadline)
+                        }
+                    }
                 } else {
                     let totals = entries.reduce(NutrientData()) { acc, entry in
                         acc + viewModel.parseNutrients(entry.nutrientsJson)
                     }
 
-                    // Summary chips
                     HStack(spacing: 8) {
                         summaryChip(String(localized: "Ккал"), value: String(format: "%.0f", totals.calories))
                         summaryChip(String(localized: "Б"), value: String(format: "%.1f %@", totals.protein, String(localized: "г")))
@@ -76,18 +135,59 @@ struct HistoryScreen: View {
                         summaryChip(String(localized: "У"), value: String(format: "%.1f %@", totals.carbs, String(localized: "г")))
                     }
 
-                    // Entry list
+                    if isEditing {
+                        Button(action: {
+                            addFoodTargetDate = date
+                            showAddFoodSheet = true
+                        }) {
+                            Label("Добавить", systemImage: "plus")
+                                .font(.subheadline)
+                        }
+                        .padding(.bottom, 4)
+                    }
+
+                    // Column header
+                    HStack(spacing: 4) {
+                        Text("Продукт").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                        Text("Вес").font(.caption2).foregroundColor(.secondary).frame(width: 52, alignment: .trailing)
+                        Text("Ккал").font(.caption2).foregroundColor(.secondary).frame(width: 52, alignment: .trailing)
+                        if isEditing { Spacer().frame(width: 28) }
+                    }
+
                     ForEach(entries, id: \.self) { entry in
                         let nutrients = viewModel.parseNutrients(entry.nutrientsJson)
-                        HStack {
-                            Text(entry.foodName).font(.caption).lineLimit(2)
-                            Spacer()
-                            Text(WeightFormat.short(grams: entry.weightGrams)).font(.caption2).foregroundColor(.secondary)
-                            Text("\(Int(nutrients.calories)) \(String(localized: "ккал"))").font(.caption2)
+                        HStack(spacing: 4) {
+                            Text(entry.foodName)
+                                .font(.caption)
+                                .lineLimit(isEditing ? 1 : 2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            if isEditing {
+                                TextField("г", text: Binding(
+                                    get: { editedWeights[date]?[entry] ?? String(Int(entry.weightGrams)) },
+                                    set: { editedWeights[date]?[entry] = $0 }
+                                ))
+                                .keyboardType(.numberPad)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 52)
+                                .font(.caption2)
+                                Button(action: { viewModel.deleteEntry(entry) }) {
+                                    Image(systemName: "trash")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                }
+                                .frame(width: 28, height: 28)
+                            } else {
+                                Text(WeightFormat.short(grams: entry.weightGrams))
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 52, alignment: .trailing)
+                                Text("\(Int(nutrients.calories))")
+                                    .font(.caption2)
+                                    .frame(width: 52, alignment: .trailing)
+                            }
                         }
                     }
 
-                    // Progress bars for macros + fat details
                     if let norms = viewModel.dailyNorms {
                         Divider()
                         let bars: [(name: String, value: Double, target: Double, unit: String, upperRatio: Double)] = [
@@ -110,6 +210,20 @@ struct HistoryScreen: View {
         }
         .padding()
         .cardStyle()
+    }
+
+    private func saveWeights(for date: String, entries: [FoodEntry]) {
+        if let weights = editedWeights[date] {
+            let changes = Dictionary(uniqueKeysWithValues:
+                weights.compactMap { (entry, str) -> (FoodEntry, Double)? in
+                    guard let d = Double(str.replacingOccurrences(of: ",", with: ".")), d > 0 else { return nil }
+                    return (entry, d)
+                }
+            )
+            if !changes.isEmpty { viewModel.updateMultipleWeights(changes) }
+        }
+        editedWeights.removeValue(forKey: date)
+        editingDates.remove(date)
     }
 
     private func summaryChip(_ label: String, value: String) -> some View {
@@ -140,12 +254,12 @@ struct HistoryScreen: View {
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 3).fill(AppColor.surfaceVariant).frame(height: 6)
+                    RoundedRectangle(cornerRadius: 3).fill(AppColor.surfaceVariant).frame(height: 7)
                     RoundedRectangle(cornerRadius: 3).fill(color)
-                        .frame(width: min(CGFloat(pct) * geo.size.width, geo.size.width), height: 6)
+                        .frame(width: min(CGFloat(pct) * geo.size.width, geo.size.width), height: 7)
                 }
             }
-            .frame(height: 6)
+            .frame(height: 7)
         }
     }
 
@@ -163,5 +277,94 @@ struct HistoryScreen: View {
         display.locale = .current
         display.setLocalizedDateFormatFromTemplate("ddMMyyyy")
         return display.string(from: date)
+    }
+}
+
+private struct AddFoodToDateView: View {
+    let date: String
+    let viewModel: MainViewModel
+    let onDismiss: () -> Void
+
+    @State private var foodName = ""
+    @State private var weight = ""
+    @State private var cachedFood: FoodCache? = nil
+    @State private var isLoading = false
+    @State private var error: String? = nil
+
+    private var suggestions: [FoodCache] {
+        guard foodName.count >= 2, cachedFood == nil else { return [] }
+        let q = foodName.lowercased()
+        return viewModel.cachedFoods
+            .filter { $0.keyOriginal.lowercased().contains(q) || $0.keyEn.lowercased().contains(q) }
+            .prefix(4)
+            .map { $0 }
+    }
+
+    private var weightOk: Bool {
+        (Double(weight.replacingOccurrences(of: ",", with: ".")) ?? 0) > 0
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Продукт", text: $foodName)
+                        .onChange(of: foodName) { _ in cachedFood = nil }
+                    if !suggestions.isEmpty {
+                        ForEach(suggestions, id: \.keyOriginal) { item in
+                            Button(action: {
+                                foodName = item.keyOriginal
+                                cachedFood = item
+                            }) {
+                                Text(item.keyOriginal)
+                                    .font(.subheadline)
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                    }
+                    TextField("Вес (г)", text: $weight)
+                        .keyboardType(.decimalPad)
+                }
+                if isLoading {
+                    Section {
+                        HStack(spacing: 8) {
+                            ProgressView().scaleEffect(0.8)
+                            Text("Анализируем…").font(.subheadline).foregroundColor(.secondary)
+                        }
+                    }
+                }
+                if let err = error {
+                    Section {
+                        Text(err).font(.subheadline).foregroundColor(.red)
+                    }
+                }
+            }
+            .navigationTitle("Добавить продукт")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Отмена") { if !isLoading { onDismiss() } }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Добавить") {
+                        guard let w = Double(weight.replacingOccurrences(of: ",", with: ".")) else { return }
+                        isLoading = true
+                        error = nil
+                        viewModel.addFoodForDate(
+                            name: foodName.trimmingCharacters(in: .whitespaces),
+                            weightGrams: w,
+                            date: date,
+                            cachedFood: cachedFood,
+                            onSuccess: { onDismiss() },
+                            onError: { msg in isLoading = false; error = msg }
+                        )
+                    }
+                    .disabled(foodName.trimmingCharacters(in: .whitespaces).isEmpty || !weightOk || isLoading)
+                }
+            }
+            .sheetChrome()
+        }
+        .presentationBackground(Color(.systemBackground))
+        .presentationDetents([.medium])
     }
 }

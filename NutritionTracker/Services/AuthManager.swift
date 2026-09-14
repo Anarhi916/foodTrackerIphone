@@ -193,7 +193,7 @@ final class AuthManager: NSObject, ObservableObject {
                     // Cancelled or no code — drop the cover so LoginScreen is interactive again.
                     self.isBusy = false
                     self.isAuthenticating = false
-                    if error != nil { self.errorMessage = "Вход через Google отменён" }
+                    if error != nil { self.errorMessage = String(localized: "Вход через Google отменён") }
                     return
                 }
                 // Keep isBusy/isAuthenticating up THROUGH the token exchange so the splash
@@ -217,7 +217,7 @@ final class AuthManager: NSObject, ObservableObject {
             store(tokens)   // clears isAuthenticating in the same publish as isSignedIn=true
         } catch {
             isAuthenticating = false
-            errorMessage = "Не удалось войти через Google"
+            errorMessage = String(localized: "Не удалось войти через Google")
         }
     }
 
@@ -274,7 +274,7 @@ extension AuthManager: ASAuthorizationControllerDelegate {
               let rawNonce = currentAppleRawNonce else {
             isBusy = false
             isAuthenticating = false
-            errorMessage = "Apple не вернул токен"
+            errorMessage = String(localized: "Apple не вернул токен")
             return
         }
         Task { @MainActor in
@@ -284,7 +284,7 @@ extension AuthManager: ASAuthorizationControllerDelegate {
                 store(tokens)   // clears isAuthenticating in the same publish as isSignedIn=true
             } catch {
                 isAuthenticating = false
-                errorMessage = "Не удалось войти через Apple"
+                errorMessage = String(localized: "Не удалось войти через Apple")
             }
         }
     }
@@ -294,7 +294,7 @@ extension AuthManager: ASAuthorizationControllerDelegate {
         isAuthenticating = false
         // User cancellation — don't show it as an error.
         if (error as? ASAuthorizationError)?.code != .canceled {
-            errorMessage = "Вход через Apple не удался"
+            errorMessage = String(localized: "Вход через Apple не удался")
         }
     }
 }

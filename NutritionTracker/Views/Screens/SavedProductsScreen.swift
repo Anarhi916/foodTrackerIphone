@@ -435,7 +435,10 @@ struct AddCustomDishSheet: View {
                         Text("Название блюда").font(.caption).foregroundColor(.secondary)
                         TextField("Например, мой коктейль", text: $dishName, axis: .vertical)
                             .lineLimit(1...3)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.plain)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 12)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary, lineWidth: 1.5))
 
                         Text("Ингредиенты").font(.caption).foregroundColor(.secondary).padding(.top, 4)
 
@@ -498,11 +501,15 @@ struct AddCustomDishSheet: View {
                 }
             }
             .sheetChrome()
+            .presentationBackground(Color(.systemBackground))
             .sheet(isPresented: $isShowingScanner) {
                 let capturedIdx = scanningIngredientIdx
                 NavigationStack {
                     BarcodeScannerScreen(viewModel: viewModel, mode: .ingredient { barcode in
                         Task { @MainActor in
+                            isShowingScanner = false
+                            isProcessing = true
+                            defer { isProcessing = false }
                             guard let result = await viewModel.lookupBarcodeForIngredient(barcode) else { return }
                             if capturedIdx == -1 {
                                 ingredients.append(IngredientInput(name: result.name, cachedFood: result.cache))
@@ -537,7 +544,10 @@ struct AddCustomDishSheet: View {
                     get: { ingredients[idx].name },
                     set: { ingredients[idx].name = $0; ingredients[idx].cachedFood = nil }
                 ))
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 12)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary, lineWidth: 1.5))
                 .foregroundColor(ing.cachedFood != nil ? AppColor.primary : .primary)
                 .focused($focusedIngredient, equals: idx)
 
@@ -545,8 +555,11 @@ struct AddCustomDishSheet: View {
                     get: { ingredients[idx].weight },
                     set: { ingredients[idx].weight = $0 }
                 ))
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.plain)
                 .keyboardType(.decimalPad)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 12)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary, lineWidth: 1.5))
                 .frame(width: 70)
 
                 if ingredients.count > 1 {

@@ -206,6 +206,30 @@ class MainViewModel: ObservableObject {
         refreshTodayData()
     }
 
+    func addFoodForDate(
+        name: String, weightGrams: Double, date: String,
+        cachedFood: FoodCache? = nil,
+        onSuccess: @escaping () -> Void = {},
+        onError: @escaping (String) -> Void = { _ in }
+    ) {
+        Task {
+            do {
+                let nutrients: NutrientData
+                if let cached = cachedFood {
+                    let per100g = repo.parseNutrients(cached.nutrientsPer100gJson) ?? NutrientData()
+                    nutrients = per100g * (weightGrams / 100.0)
+                } else {
+                    let result = try await repo.analyzeSingleDish(name, weightGrams: weightGrams, useCache: true)
+                    nutrients = result.nutrients
+                }
+                repo.addFoodEntry(date: date, foodName: name, weightGrams: weightGrams, nutrients: nutrients, source: "manual")
+                await MainActor.run { self.refreshTodayData(); onSuccess() }
+            } catch {
+                await MainActor.run { onError(error.localizedDescription) }
+            }
+        }
+    }
+
     // MARK: - Barcode
 
     func onBarcodeScanned(_ barcode: String) {

@@ -63,7 +63,7 @@
 		51F80F5A5E18EF1B4A1F65B9 /* AppAttestService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAttestService.swift; sourceTree = "<group>"; };
 		53425435C67B97BE4FFF328C /* LanguagePickerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguagePickerButton.swift; sourceTree = "<group>"; };
 		5380C3870354411AA5A9B5FF /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Config.plist; sourceTree = "<group>"; };
-		544A42877CE36068FF09C2D0 /* Config.plist.example */ = {isa = PBXFileReference; path = Config.plist.example; sourceTree = "<group>"; };
+		544A42877CE36068FF09C2D0 /* Config.plist.example */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Config.plist.example; sourceTree = "<group>"; };
 		5EC5CC32F5A97D5CFA5F32A8 /* StatisticsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsScreen.swift; sourceTree = "<group>"; };
 		62013E9DE406A4B20AFA06BF /* BrandHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandHeader.swift; sourceTree = "<group>"; };
 		6A41AB301EE4464F8BF5C2AC /* APIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfig.swift; sourceTree = "<group>"; };
@@ -87,7 +87,7 @@
 		F3ED646478096D7032E67EB5 /* NetworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkService.swift; sourceTree = "<group>"; };
 		F42B59FA51B9288787C9C7FB /* PhotoCaptureScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCaptureScreen.swift; sourceTree = "<group>"; };
 		F6818A8D96C3239F8AD7C5D0 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
-		F7A7778041A35A7C6ECBF099 /* NutritionTracker.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NutritionTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F7A7778041A35A7C6ECBF099 /* NutritionTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NutritionTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FCF957431E41A4DD920FEEA8 /* EditProfileScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditProfileScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -248,11 +248,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
-				TargetAttributes = {
-					82DAF825C2EF3FF5EB054D3F = {
-						DevelopmentTeam = 3G27YFHY55;
-					};
-				};
 			};
 			buildConfigurationList = 5410DFDAE310878691ECC5A5 /* Build configuration list for PBXProject "NutritionTracker" */;
 			developmentRegion = ru;
@@ -344,10 +339,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = NutritionTracker/NutritionTracker.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 3G27YFHY55;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 3G27YFHY55;
 				INFOPLIST_FILE = NutritionTracker/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -355,7 +352,8 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nutrition.tracker;
-				PROVISIONING_PROFILE_SPECIFIER = nutritionTracker;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = nutritionTracker;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = 1;

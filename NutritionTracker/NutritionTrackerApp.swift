@@ -46,6 +46,7 @@ struct NutritionTrackerApp: App {
                 .environmentObject(auth)
                 .environment(\.locale, localization.locale)
                 .tint(Color(Self.brandGreenUI))   // green accent for controls on all screens
+                .environment(\.dynamicTypeSize, .xLarge)
                 .id(localization.language)   // rebuild the whole tree on language change
                 .modelContainer(DatabaseManager.shared.container)
                 .onOpenURL { url in

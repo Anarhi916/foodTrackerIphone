@@ -139,20 +139,22 @@ struct NutrientProgressBar: View {
                 Spacer()
                 Text(String(format: "%.1f / %.1f", value, target))
                     .font(.caption)
+                    .bold()
                 Text("(\(displayPercentage))")
                     .font(.caption)
+                    .bold()
             }
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 4)
                         .fill(AppColor.surfaceVariant)
-                        .frame(height: 8)
+                        .frame(height: 9)
                     RoundedRectangle(cornerRadius: 4)
                         .fill(progressColor)
-                        .frame(width: min(CGFloat(percentage) * geometry.size.width, geometry.size.width), height: 8)
+                        .frame(width: min(CGFloat(percentage) * geometry.size.width, geometry.size.width), height: 9)
                 }
             }
-            .frame(height: 8)
+            .frame(height: 9)
         }
         .contentShape(Rectangle())
         .onTapGesture { onTap() }

@@ -62,7 +62,11 @@ class NutritionRepository {
     func getAllDates() -> [String] { db.getAllDates() }
 
     func addFoodEntry(foodName: String, foodNameEn: String = "", weightGrams: Double, nutrients: NutrientData, source: String = "manual", fromCache: Bool = false) {
-        db.addFoodEntry(date: todayDate(), foodName: foodName, foodNameEn: foodNameEn, weightGrams: weightGrams, nutrients: nutrients, source: source, fromCache: fromCache)
+        addFoodEntry(date: todayDate(), foodName: foodName, foodNameEn: foodNameEn, weightGrams: weightGrams, nutrients: nutrients, source: source, fromCache: fromCache)
+    }
+
+    func addFoodEntry(date: String, foodName: String, foodNameEn: String = "", weightGrams: Double, nutrients: NutrientData, source: String = "manual", fromCache: Bool = false) {
+        db.addFoodEntry(date: date, foodName: foodName, foodNameEn: foodNameEn, weightGrams: weightGrams, nutrients: nutrients, source: source, fromCache: fromCache)
     }
 
     func updateFoodEntryWeight(_ entry: FoodEntry, newWeight: Double) {

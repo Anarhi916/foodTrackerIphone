@@ -43,7 +43,7 @@ struct MainScreen: View {
                     }
                 )
                 ScrollView {
-                    VStack(spacing: 16) {
+                    VStack(spacing: 12) {
                         // Food input
                         foodInputSection
 
@@ -72,6 +72,7 @@ struct MainScreen: View {
                     }
                     .padding()
                 }
+                .scrollDismissesKeyboard(.immediately)
                 .background(AppColor.background)
             }
             .navigationBarHidden(true)
@@ -202,7 +203,7 @@ struct MainScreen: View {
             // Wide "Add" button at the bottom, like on Android.
             // disabled -> gray (Material filled Button), active -> rich green.
             let addDisabled = viewModel.foodInput.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isLoading
-            Button(action: { viewModel.analyzeFood() }) {
+            Button(action: { foodInputFocused = false; viewModel.analyzeFood() }) {
                 HStack(spacing: 4) {
                     Image(systemName: "plus")
                     Text("Добавить")
@@ -214,6 +215,7 @@ struct MainScreen: View {
                 .background(RoundedRectangle(cornerRadius: 24).fill(addDisabled ? AppColor.disabledContainer : AppColor.primary))
             }
             .disabled(addDisabled)
+            .padding(.vertical, 5)
 
             // 3 equal outlined icon buttons: Barcode / Photo (order as on Android).
             HStack(spacing: 8) {
@@ -288,23 +290,25 @@ struct MainScreen: View {
                     .padding(.vertical, 12)
                     .cardStyle()
             } else {
+                VStack(alignment: .leading, spacing: 4) {
                 // Header — green primaryContainer bar (like Android).
                 HStack {
                     if editMode {
                         Spacer().frame(width: 24)
                     }
                     Text("Продукт").font(.caption).bold().frame(maxWidth: .infinity, alignment: .leading)
-                    Text("Вес").font(.caption).bold().frame(width: 45)
-                    Text("Ккал").font(.caption).bold().frame(width: 40)
-                    Text("Б").font(.caption).bold().frame(width: 30)
-                    Text("Ж").font(.caption).bold().frame(width: 30)
-                    Text("У").font(.caption).bold().frame(width: 30)
+                    Text("Вес").font(.caption).bold().frame(width: 50)
+                    Text("Ккал").font(.caption).bold().frame(width: 50)
+                    Text("Б").font(.caption).bold().frame(width: 36)
+                    Text("Ж").font(.caption).bold().frame(width: 36)
+                    Text("У").font(.caption).bold().frame(width: 36)
                 }
                 .foregroundColor(AppColor.onPrimaryContainer)
                 .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.vertical, 4)
                 .background(RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous).fill(AppColor.primaryContainer))
 
+                VStack(alignment: .leading, spacing: 4) {
                 ForEach(viewModel.todayEntries, id: \.self) { entry in
                     let nutrients = viewModel.parseNutrients(entry.nutrientsJson)
                     HStack {
@@ -319,26 +323,25 @@ struct MainScreen: View {
                             .frame(width: 24)
                         }
                         HStack(spacing: 4) {
-                            Text(entry.foodName).font(.caption2).fixedSize(horizontal: false, vertical: true)
+                            Text(entry.foodName).font(.caption).fixedSize(horizontal: false, vertical: true)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                         if editMode {
                             TextField("", text: weightBinding(for: entry))
-                                .font(.caption2)
-                                .keyboardType(.numberPad)
+                                .font(.caption)
                                 .textFieldStyle(.roundedBorder)
-                                .frame(width: 45)
+                                .frame(width: 50)
                         } else {
-                            Text("\(Int(entry.weightGrams))").font(.caption2).lineLimit(1).frame(width: 45)
+                            Text("\(Int(entry.weightGrams))").font(.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 50)
                         }
-                        Text("\(Int(nutrients.calories))").font(.caption2).lineLimit(1).frame(width: 40)
-                        Text(String(format: "%.1f", nutrients.protein)).font(.caption2).lineLimit(1).frame(width: 30)
-                        Text(String(format: "%.1f", nutrients.fat)).font(.caption2).lineLimit(1).frame(width: 30)
-                        Text(String(format: "%.1f", nutrients.carbs)).font(.caption2).lineLimit(1).frame(width: 30)
+                        Text("\(Int(nutrients.calories))").font(.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 50)
+                        Text(String(format: "%.1f", nutrients.protein)).font(.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
+                        Text(String(format: "%.1f", nutrients.fat)).font(.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
+                        Text(String(format: "%.1f", nutrients.carbs)).font(.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
                     }
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 3)
                     .background(RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous).fill(AppColor.surfaceContainer))
                     .contentShape(Rectangle())
                     .contextMenu {
@@ -346,6 +349,7 @@ struct MainScreen: View {
                         Button("Удалить", role: .destructive) { viewModel.deleteEntry(entry) }
                     }
                 }
+                } // VStack(spacing: 4)
 
                 // Totals — green secondaryContainer bar (like Android).
                 HStack {
@@ -353,16 +357,17 @@ struct MainScreen: View {
                         Spacer().frame(width: 24)
                     }
                     Text("Итого").font(.caption).bold().frame(maxWidth: .infinity, alignment: .leading)
-                    Text("\(Int(viewModel.todayEntries.reduce(0) { $0 + Int($1.weightGrams) }))").font(.caption).bold().lineLimit(1).frame(width: 45)
-                    Text("\(Int(viewModel.todayTotals.calories))").font(.caption).bold().lineLimit(1).frame(width: 40)
-                    Text(String(format: "%.1f", viewModel.todayTotals.protein)).font(.caption).bold().lineLimit(1).frame(width: 30)
-                    Text(String(format: "%.1f", viewModel.todayTotals.fat)).font(.caption).bold().lineLimit(1).frame(width: 30)
-                    Text(String(format: "%.1f", viewModel.todayTotals.carbs)).font(.caption).bold().lineLimit(1).frame(width: 30)
+                    Text("\(Int(viewModel.todayEntries.reduce(0) { $0 + Int($1.weightGrams) }))").font(.caption).bold().lineLimit(1).minimumScaleFactor(0.8).frame(width: 50)
+                    Text("\(Int(viewModel.todayTotals.calories))").font(.caption).bold().lineLimit(1).minimumScaleFactor(0.8).frame(width: 50)
+                    Text(String(format: "%.1f", viewModel.todayTotals.protein)).font(.caption).bold().lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
+                    Text(String(format: "%.1f", viewModel.todayTotals.fat)).font(.caption).bold().lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
+                    Text(String(format: "%.1f", viewModel.todayTotals.carbs)).font(.caption).bold().lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
                 }
                 .foregroundColor(AppColor.onSecondaryContainer)
                 .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.vertical, 4)
                 .background(RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous).fill(AppColor.secondaryContainer))
+                } // outer VStack(spacing: 4) wrapping header+entries+totals
             }
         }
         .alert("Удалить?", isPresented: Binding(

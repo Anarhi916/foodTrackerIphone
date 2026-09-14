@@ -5,19 +5,8 @@ import Foundation
 // (its own IP -> the rate limit doesn't collapse; there's no key — nothing to hide).
 struct APIConfig {
     // MARK: - Backend
-    // Production URL. On the iOS Simulator in a DEBUG build we instead hit an SSH tunnel to
-    // the server's plain-HTTP port 3000 (Node listens there directly; Caddy only fronts TLS).
-    // The corporate network on the dev machine blocks the production domain at the TLS/SNI
-    // layer, so the simulator — routing through that machine — can't reach it otherwise.
-    // On real devices and in release this always resolves to the production URL.
-    //   Start the tunnel on the host:  ssh -N -L 3000:127.0.0.1:3000 root@169.58.153.252
-    static let backendBaseURL: String = {
-        #if targetEnvironment(simulator) && DEBUG
-        return "http://localhost:3000"
-        #else
-        return "https://api.nutritiontracker.uk"
-        #endif
-    }()
+    // Production URL used on real devices, simulator, and all builds.
+    static let backendBaseURL = "https://api.nutritiontracker.uk"
 
     // Dev auth (X-Dev-Auth). In prod it's replaced by App Attest.
     // Must match DEV_AUTH_SECRET in backend/.env.

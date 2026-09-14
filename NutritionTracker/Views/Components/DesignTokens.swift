@@ -50,6 +50,7 @@ enum AppColor {
     static let surfaceVariant        = dyn(light: 0xDCE5DB, dark: 0x404942)
     static let surfaceContainer      = dyn(light: 0xEBF1E9, dark: 0x1C211C)
     static let surfaceContainerHigh  = dyn(light: 0xE5EBE3, dark: 0x262B25)
+    static let surfaceContainerHighest = dyn(light: 0xD1D9D0, dark: 0x3B443D)
 
     // On-colors
     static let onSurface        = dyn(light: 0x181D18, dark: 0xDFE4DB)
@@ -57,7 +58,7 @@ enum AppColor {
 
     // Disabled state of a filled button (like Material 3: onSurface over surface).
     // Noticeably darker than the section background so the button outline is visible.
-    static let disabledContainer = dyn(light: 0xC4CDC3, dark: 0x2A2F29)
+    static let disabledContainer = dyn(light: 0xBAC3B9, dark: 0x282D27)
     static let onDisabled        = dyn(light: 0x6A736C, dark: 0x8A938B)
 
     // Outlines
@@ -85,7 +86,7 @@ extension View {
     /// Standard tonal card: medium (16) corner radius, given surface, soft shadow.
     /// Defaults to surfaceVariant (#DCE5DB) — matches the section background on Android.
     func cardStyle(
-        _ container: Color = AppColor.surfaceVariant,
+        _ container: Color = AppColor.surfaceContainerHighest,
         radius: CGFloat = AppRadius.medium,
         elevation: CGFloat = 1
     ) -> some View {
