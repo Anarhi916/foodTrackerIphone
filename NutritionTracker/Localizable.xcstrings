@@ -1,6 +1,162 @@
 {
   "sourceLanguage" : "ru",
   "strings" : {
+    "Политика конфиденциальности" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datenschutzrichtlinie"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy Policy"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Política de privacidad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Politique de confidentialité"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Informativa sulla privacy"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Política de Privacidade"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Политика конфиденциальности"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Політика конфіденційності"
+          }
+        }
+      }
+    },
+    "Условия использования" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nutzungsbedingungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terms of Service"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Términos de servicio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conditions d’utilisation"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Termini di servizio"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Termos de Serviço"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Условия использования"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Умови використання"
+          }
+        }
+      }
+    },
+    "Информация о питании и нормы носят справочный характер, могут быть неточными и не являются медицинской консультацией. Перед изменением рациона проконсультируйтесь со специалистом." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Ernährungsangaben und Zielwerte dienen nur zur Orientierung, können ungenau sein und stellen keine medizinische Beratung dar. Konsultieren Sie vor einer Ernährungsumstellung eine Fachkraft."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nutrition information and targets are for reference only, may be inaccurate, and do not constitute medical advice. Consult a professional before changing your diet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La información nutricional y los objetivos son solo de referencia, pueden ser inexactos y no constituyen asesoramiento médico. Consulte a un profesional antes de cambiar su dieta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les informations nutritionnelles et les objectifs sont fournis à titre indicatif, peuvent être inexacts et ne constituent pas un avis médical. Consultez un professionnel avant de modifier votre alimentation."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le informazioni nutrizionali e gli obiettivi hanno carattere puramente indicativo, possono essere imprecisi e non costituiscono un parere medico. Consulta un professionista prima di modificare la tua alimentazione."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As informações nutricionais e as metas são apenas para referência, podem ser imprecisas e não constituem aconselhamento médico. Consulte um profissional antes de alterar sua dieta."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Информация о питании и нормы носят справочный характер, могут быть неточными и не являются медицинской консультацией. Перед изменением рациона проконсультируйтесь со специалистом."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Інформація про харчування та норми має довідковий характер, може бути неточною та не є медичною консультацією. Перед зміною раціону проконсультуйтеся з фахівцем."
+          }
+        }
+      }
+    },
     "" : {
 
     },
@@ -3520,54 +3676,54 @@
         }
       }
     },
-    "Делюсь блюдом «%@» в NutriTrack:\n%@" : {
+    "Делюсь блюдом «%@» в NutritionTracker:\n%@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ich teile das Gericht „%@“ in NutriTrack:\n%@"
+            "value" : "Ich teile das Gericht „%@“ in NutritionTracker:\n%@"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sharing the dish \"%1$@\" on NutriTrack:\n%2$@"
+            "value" : "Sharing the dish \"%1$@\" on NutritionTracker:\n%2$@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comparto el plato «%@» en NutriTrack:\n%@"
+            "value" : "Comparto el plato «%@» en NutritionTracker:\n%@"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Je partage le plat « %@ » sur NutriTrack :\n%@"
+            "value" : "Je partage le plat « %@ » sur NutritionTracker :\n%@"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Condivido il piatto «%@» su NutriTrack:\n%@"
+            "value" : "Condivido il piatto «%@» su NutritionTracker:\n%@"
           }
         },
         "pt" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Compartilhando o prato «%@» no NutriTrack:\n%@"
+            "value" : "Compartilhando o prato «%@» no NutritionTracker:\n%@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Делюсь блюдом «%@» в NutriTrack:\n%@"
+            "value" : "Делюсь блюдом «%@» в NutritionTracker:\n%@"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ділюся стравою «%@» у NutriTrack:\n%@"
+            "value" : "Ділюся стравою «%@» у NutritionTracker:\n%@"
           }
         }
       }
@@ -5817,9 +5973,6 @@
           }
         }
       }
-    },
-    "Макронутриенты и калории" : {
-
     },
     "Марганец (мг)" : {
       "localizations" : {

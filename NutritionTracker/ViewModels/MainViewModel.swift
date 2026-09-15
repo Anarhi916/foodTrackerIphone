@@ -35,7 +35,7 @@ class MainViewModel: ObservableObject {
     @Published var barcodeNutrientsPer100g: NutrientData?
     @Published var barcodeWeight: String = "100"
 
-    // Set when a NutriTrack QR share is scanned (URL points at our web share page or custom scheme)
+    // Set when a NutritionTracker QR share is scanned (URL points at our web share page or custom scheme)
     @Published var importedSharedFood: SharedFood?
 
     @Published var showPhotoEditDialog: Bool = false
@@ -158,7 +158,10 @@ class MainViewModel: ObservableObject {
             nutrients = food.nutrients
         }
 
-        let foodName = pendingFoodOriginalInput.isEmpty ? food.foodName : pendingFoodOriginalInput
+        // Use the clean, weight-stripped name (matches the cache/quick-add path). The raw
+        // input still carries any inline weight the user typed (e.g. "картофель 20г"), which
+        // must NOT leak into the diary name — there's a separate Вес column for it.
+        let foodName = food.foodName.isEmpty ? pendingFoodOriginalInput : food.foodName
         repo.addFoodEntry(foodName: foodName, foodNameEn: food.foodNameEn, weightGrams: newWeight, nutrients: nutrients, source: pendingFoodSource, fromCache: food.fromCache)
         showConfirmDialog = false
         pendingFood = nil

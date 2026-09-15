@@ -198,6 +198,23 @@ private struct ProfileDataTab: View {
                         .padding(.vertical, 12)
                 }
                 .padding(.top, 8)
+
+                // Legal links + medical disclaimer (App Store requirement).
+                VStack(spacing: 8) {
+                    HStack(spacing: 16) {
+                        Link(String(localized: "Политика конфиденциальности"),
+                             destination: URL(string: "https://nutritiontracker.uk/privacy")!)
+                        Link(String(localized: "Условия использования"),
+                             destination: URL(string: "https://nutritiontracker.uk/terms")!)
+                    }
+                    .font(.footnote)
+
+                    Text("Информация о питании и нормы носят справочный характер, могут быть неточными и не являются медицинской консультацией. Перед изменением рациона проконсультируйтесь со специалистом.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 4)
             }
             .padding()
         }

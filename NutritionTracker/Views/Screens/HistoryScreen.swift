@@ -90,6 +90,7 @@ struct HistoryScreen: View {
                             editingDates.insert(date)
                         }) {
                             Image(systemName: "pencil")
+                                .font(.title2)
                                 .foregroundColor(AppColor.primary)
                         }
                     }

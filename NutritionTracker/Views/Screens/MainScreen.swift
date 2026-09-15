@@ -33,7 +33,10 @@ struct MainScreen: View {
                                 Label("Статистика", systemImage: "chart.bar")
                             }
                         } label: {
-                            Image(systemName: "line.3.horizontal").font(.system(size: 20))
+                            Image(systemName: "line.3.horizontal")
+                                .font(.system(size: 20))
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
                     },
                     trailing: {
@@ -368,6 +371,9 @@ struct MainScreen: View {
                 .padding(.vertical, 4)
                 .background(RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous).fill(AppColor.secondaryContainer))
                 } // outer VStack(spacing: 4) wrapping header+entries+totals
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .cardStyle()
             }
         }
         .alert("Удалить?", isPresented: Binding(
@@ -416,7 +422,7 @@ struct MainScreen: View {
     private var macrosSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Title in a large font ABOVE the card (like Android headlineMedium).
-            Text("Макронутриенты и калории")
+            Text("БЖУ и Калории")
                 .font(.title2).bold()
             let nutrients = viewModel.todayTotals.macrosList()
             let norms = viewModel.dailyNorms?.macrosList() ?? []
