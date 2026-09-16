@@ -85,7 +85,7 @@ struct MainScreen: View {
                         Color.black.opacity(0.3).ignoresSafeArea()
                         VStack(spacing: 12) {
                             ProgressView()
-                            Text("Анализируем…").font(.subheadline)
+                            Text("Анализируем…").font(AppFont.subheadline)
                         }
                         .padding(24)
                         .background(RoundedRectangle(cornerRadius: 12).fill(AppColor.surface))
@@ -149,7 +149,7 @@ struct MainScreen: View {
         VStack(spacing: 8) {
             // Multiline input field (2-3 lines), like on Android.
             TextField("Что вы съели?", text: $viewModel.foodInput, axis: .vertical)
-                .font(.body)
+                .font(AppFont.body)
                 .lineLimit(2...3)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 12)
@@ -180,11 +180,11 @@ struct MainScreen: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(entry.keyOriginal)
-                                        .font(.subheadline)
+                                        .font(AppFont.subheadline)
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
                                     Text(String(format: String(localized: "%.0f ккал • Б%.1f Ж%.1f У%.1f /100г"), nutrients.calories, nutrients.protein, nutrients.fat, nutrients.carbs))
-                                        .font(.caption)
+                                        .font(AppFont.caption)
                                         .foregroundColor(.secondary)
                                 }
                                 Spacer()
@@ -211,7 +211,7 @@ struct MainScreen: View {
                     Image(systemName: "plus")
                     Text("Добавить")
                 }
-                .font(.headline)
+                .font(AppFont.calloutBold)
                 .foregroundColor(addDisabled ? AppColor.onDisabled : .white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -250,7 +250,7 @@ struct MainScreen: View {
         VStack(alignment: .leading, spacing: 8) {
             // "Today" title in a large font ABOVE the card (like Android headlineMedium).
             Text("Сегодня")
-                .font(.title2).bold()
+                .font(AppFont.cardTitle)
 
             // Edit button on the right, below the title (like Android).
             HStack {
@@ -261,12 +261,11 @@ struct MainScreen: View {
                             editMode = false
                             editedWeights = [:]
                         }
-                        .font(.subheadline)
+                        .font(AppFont.subheadline)
                         Button("Сохранить") {
                             saveEditedWeights()
                         }
-                        .font(.subheadline)
-                        .bold()
+                        .font(AppFont.subheadlineBold)
                     } else {
                         Button {
                             editMode = true
@@ -279,7 +278,7 @@ struct MainScreen: View {
                                 Image(systemName: "pencil")
                                 Text("Редактировать")
                             }
-                            .font(.subheadline)
+                            .font(AppFont.subheadline)
                         }
                     }
                 }
@@ -287,31 +286,33 @@ struct MainScreen: View {
 
             if viewModel.todayEntries.isEmpty {
                 Text("Пока нет записей")
-                    .font(.subheadline)
+                    .font(AppFont.subheadline)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .cardStyle()
             } else {
-                VStack(alignment: .leading, spacing: 4) {
+                // Separated pills like Android: no outer container card — the header, each
+                // entry row and the totals row are individual 16-radius cards on the screen
+                // background with small gaps between them.
+                VStack(alignment: .leading, spacing: 6) {
                 // Header — green primaryContainer bar (like Android).
                 HStack {
                     if editMode {
                         Spacer().frame(width: 24)
                     }
-                    Text("Продукт").font(.caption).bold().frame(maxWidth: .infinity, alignment: .leading)
-                    Text("Вес").font(.caption).bold().frame(width: 50)
-                    Text("Ккал").font(.caption).bold().frame(width: 50)
-                    Text("Б").font(.caption).bold().frame(width: 36)
-                    Text("Ж").font(.caption).bold().frame(width: 36)
-                    Text("У").font(.caption).bold().frame(width: 36)
+                    Text("Продукт").font(AppFont.captionBold).frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Вес").font(AppFont.captionBold).frame(width: 50)
+                    Text("Ккал").font(AppFont.captionBold).frame(width: 50)
+                    Text("Б").font(AppFont.captionBold).frame(width: 36)
+                    Text("Ж").font(AppFont.captionBold).frame(width: 36)
+                    Text("У").font(AppFont.captionBold).frame(width: 36)
                 }
                 .foregroundColor(AppColor.onPrimaryContainer)
                 .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-                .background(RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous).fill(AppColor.primaryContainer))
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous).fill(AppColor.primaryContainer))
 
-                VStack(alignment: .leading, spacing: 4) {
                 ForEach(viewModel.todayEntries, id: \.self) { entry in
                     let nutrients = viewModel.parseNutrients(entry.nutrientsJson)
                     HStack {
@@ -326,54 +327,51 @@ struct MainScreen: View {
                             .frame(width: 24)
                         }
                         HStack(spacing: 4) {
-                            Text(entry.foodName).font(.caption).fixedSize(horizontal: false, vertical: true)
+                            Text(entry.foodName).font(AppFont.caption).fixedSize(horizontal: false, vertical: true)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                         if editMode {
                             TextField("", text: weightBinding(for: entry))
-                                .font(.caption)
+                                .font(AppFont.caption)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 50)
                         } else {
-                            Text("\(Int(entry.weightGrams))").font(.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 50)
+                            Text("\(Int(entry.weightGrams))г").font(AppFont.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 50)
                         }
-                        Text("\(Int(nutrients.calories))").font(.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 50)
-                        Text(String(format: "%.1f", nutrients.protein)).font(.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
-                        Text(String(format: "%.1f", nutrients.fat)).font(.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
-                        Text(String(format: "%.1f", nutrients.carbs)).font(.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
+                        Text("\(Int(nutrients.calories))").font(AppFont.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 50)
+                        Text(String(format: "%.1f", nutrients.protein)).font(AppFont.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
+                        Text(String(format: "%.1f", nutrients.fat)).font(AppFont.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
+                        Text(String(format: "%.1f", nutrients.carbs)).font(AppFont.caption).lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
                     }
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 3)
-                    .background(RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous).fill(AppColor.surfaceContainer))
+                    .padding(.vertical, 10)
+                    .background(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous).fill(AppColor.surfaceContainerHighest))
                     .contentShape(Rectangle())
                     .contextMenu {
                         Button("Изменить вес") { viewModel.showEditWeight(for: entry) }
                         Button("Удалить", role: .destructive) { viewModel.deleteEntry(entry) }
                     }
                 }
-                } // VStack(spacing: 4)
 
                 // Totals — green secondaryContainer bar (like Android).
                 HStack {
                     if editMode {
                         Spacer().frame(width: 24)
                     }
-                    Text("Итого").font(.caption).bold().frame(maxWidth: .infinity, alignment: .leading)
-                    Text("\(Int(viewModel.todayEntries.reduce(0) { $0 + Int($1.weightGrams) }))").font(.caption).bold().lineLimit(1).minimumScaleFactor(0.8).frame(width: 50)
-                    Text("\(Int(viewModel.todayTotals.calories))").font(.caption).bold().lineLimit(1).minimumScaleFactor(0.8).frame(width: 50)
-                    Text(String(format: "%.1f", viewModel.todayTotals.protein)).font(.caption).bold().lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
-                    Text(String(format: "%.1f", viewModel.todayTotals.fat)).font(.caption).bold().lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
-                    Text(String(format: "%.1f", viewModel.todayTotals.carbs)).font(.caption).bold().lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
+                    Text("Итого").font(AppFont.captionBold).frame(maxWidth: .infinity, alignment: .leading)
+                    Text("\(Int(viewModel.todayEntries.reduce(0) { $0 + Int($1.weightGrams) }))г").font(AppFont.captionBold).lineLimit(1).minimumScaleFactor(0.8).frame(width: 50)
+                    Text("\(Int(viewModel.todayTotals.calories))").font(AppFont.captionBold).lineLimit(1).minimumScaleFactor(0.8).frame(width: 50)
+                    Text(String(format: "%.1f", viewModel.todayTotals.protein)).font(AppFont.captionBold).lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
+                    Text(String(format: "%.1f", viewModel.todayTotals.fat)).font(AppFont.captionBold).lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
+                    Text(String(format: "%.1f", viewModel.todayTotals.carbs)).font(AppFont.captionBold).lineLimit(1).minimumScaleFactor(0.8).frame(width: 36)
                 }
                 .foregroundColor(AppColor.onSecondaryContainer)
                 .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-                .background(RoundedRectangle(cornerRadius: AppRadius.small, style: .continuous).fill(AppColor.secondaryContainer))
-                } // outer VStack(spacing: 4) wrapping header+entries+totals
-                .padding()
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous).fill(AppColor.secondaryContainer))
+                } // VStack(spacing: 6) — separated pills
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .cardStyle()
             }
         }
         .alert("Удалить?", isPresented: Binding(
@@ -420,10 +418,10 @@ struct MainScreen: View {
     // MARK: - Progress Sections
 
     private var macrosSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             // Title in a large font ABOVE the card (like Android headlineMedium).
             Text("БЖУ и Калории")
-                .font(.title2).bold()
+                .font(AppFont.cardTitle)
             let nutrients = viewModel.todayTotals.macrosList()
             let norms = viewModel.dailyNorms?.macrosList() ?? []
             VStack(alignment: .leading, spacing: 8) {

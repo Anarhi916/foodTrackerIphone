@@ -18,15 +18,16 @@ struct BrandHeader<Leading: View, Trailing: View>: View {
     }
 
     var body: some View {
-        ZStack {
+        HStack(spacing: 0) {
+            leading().foregroundColor(.white)
+            // Left-aligned title next to the nav icon, like Android's TopAppBar (titleLarge 18/600).
             Text(title)
-                .font(.headline)
+                .font(AppFont.roboto(18, .semibold, relativeTo: .headline))
                 .foregroundColor(.white)
-            HStack {
-                leading().foregroundColor(.white)
-                Spacer()
-                trailing().foregroundColor(.white)
-            }
+                .lineLimit(1)
+                .padding(.leading, leadingHasContent ? 4 : 0)
+            Spacer(minLength: 8)
+            trailing().foregroundColor(.white)
         }
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity)
@@ -35,4 +36,6 @@ struct BrandHeader<Leading: View, Trailing: View>: View {
         .padding(.bottom, 8)
         .background(AppColor.primary)
     }
+
+    private var leadingHasContent: Bool { Leading.self != EmptyView.self }
 }

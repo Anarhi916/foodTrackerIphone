@@ -22,6 +22,15 @@ private func dyn(light: UInt32, dark: UInt32) -> Color {
     })
 }
 
+// sRGB variant. Saturated brand colors (the app-bar green) must render in sRGB to match
+// the Android app exactly — Android draws #1B9E3E in sRGB → (27,158,62); interpreting the
+// same hex as Display-P3 would shift it to a brighter (0,161,45).
+private func dynSRGB(light: UInt32, dark: UInt32) -> Color {
+    Color(UIColor { trait in
+        trait.userInterfaceStyle == .dark ? UIColor(srgb: dark) : UIColor(srgb: light)
+    })
+}
+
 private extension UIColor {
     convenience init(rgb: UInt32) {
         self.init(
@@ -31,11 +40,21 @@ private extension UIColor {
             alpha: 1.0
         )
     }
+
+    convenience init(srgb: UInt32) {
+        self.init(
+            red: Double((srgb >> 16) & 0xFF) / 255.0,
+            green: Double((srgb >> 8) & 0xFF) / 255.0,
+            blue: Double(srgb & 0xFF) / 255.0,
+            alpha: 1.0
+        )
+    }
 }
 
 enum AppColor {
-    // Brand / primary
-    static let primary            = dyn(light: 0x1B9E3E, dark: 0x8DD996)
+    // Brand / primary — rendered in sRGB (not Display-P3) so the saturated app-bar green
+    // lands on Android's exact rendered (27,158,62). Same #1B9E3E hex, matching color space.
+    static let primary            = dynSRGB(light: 0x1B9E3E, dark: 0x8DD996)
     static let onPrimary          = dyn(light: 0xFFFFFF, dark: 0x00390F)
     static let primaryContainer   = dyn(light: 0xC8F0CF, dark: 0x00531A)
     static let onPrimaryContainer = dyn(light: 0x00390F, dark: 0xC8F0CF)
@@ -50,7 +69,8 @@ enum AppColor {
     static let surfaceVariant        = dyn(light: 0xDCE5DB, dark: 0x404942)
     static let surfaceContainer      = dyn(light: 0xEBF1E9, dark: 0x1C211C)
     static let surfaceContainerHigh  = dyn(light: 0xE5EBE3, dark: 0x262B25)
-    static let surfaceContainerHighest = dyn(light: 0xD1D9D0, dark: 0x3B443D)
+    // Neutral tonal card fill — matches the Android app's rendered card color (#DCE5DB).
+    static let surfaceContainerHighest = dyn(light: 0xDCE5DB, dark: 0x3B443D)
 
     // On-colors
     static let onSurface        = dyn(light: 0x181D18, dark: 0xDFE4DB)
@@ -78,6 +98,47 @@ enum AppRadius {
     static let medium: CGFloat = 16   // cards
     static let large: CGFloat = 20    // large containers
     static let extraLarge: CGFloat = 28
+}
+
+// MARK: - Typography (Roboto — same font family as the Android app)
+//
+// The Android app renders in the system Roboto face. To match it 1:1 on iOS we bundle
+// Roboto (see Fonts/ + UIAppFonts in Info.plist) and route every text role through here.
+// Sizes equal the default point sizes of the matching iOS text styles, and each token is
+// built with `relativeTo:` so Dynamic Type still scales the text like the system fonts did.
+// Weights map onto Android's Material 3 type scale (Regular 400 / Medium 500 / SemiBold 600).
+enum AppFont {
+    enum Weight {
+        case regular, medium, semibold, bold
+        var psName: String {
+            switch self {
+            case .regular:  return "Roboto-Regular"
+            case .medium:   return "Roboto-Medium"
+            case .semibold: return "Roboto-SemiBold"
+            case .bold:     return "Roboto-Bold"
+            }
+        }
+    }
+
+    static func roboto(_ size: CGFloat, _ weight: Weight = .regular, relativeTo style: Font.TextStyle = .body) -> Font {
+        Font.custom(weight.psName, size: size, relativeTo: style)
+    }
+
+    // Semantic roles used across the UI.
+    static let body            = roboto(17, .regular,  relativeTo: .body)
+    static let headline        = roboto(17, .semibold, relativeTo: .headline)   // section headers, dialog titles
+    static let subheadline     = roboto(15, .regular,  relativeTo: .subheadline)
+    static let subheadlineBold = roboto(15, .semibold, relativeTo: .subheadline)
+    static let callout         = roboto(16, .regular,  relativeTo: .callout)
+    static let calloutBold     = roboto(16, .semibold, relativeTo: .callout)
+    static let caption         = roboto(12, .regular,  relativeTo: .caption)
+    static let captionBold     = roboto(12, .medium,   relativeTo: .caption)    // table header / totals cells
+    static let caption2        = roboto(11, .regular,  relativeTo: .caption2)
+    // Card / section titles — pinned to Android's EXACT sp. The app forces Dynamic Type to
+    // .xLarge app-wide, which would scale a relativeTo title ~12% ABOVE Android; fixedSize
+    // keeps these 1:1 with the Android Material type scale instead.
+    static let cardTitle       = Font.custom("Roboto-SemiBold", fixedSize: 22)  // headlineMedium — "Сегодня", "БЖУ и Калории"
+    static let sectionHeader   = Font.custom("Roboto-SemiBold", fixedSize: 16)  // titleMedium+SemiBold — collapsible Vitamins/Minerals/Fat headers
 }
 
 // MARK: - Card style

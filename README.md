@@ -1,6 +1,6 @@
 # Nutrition Tracker — iOS
 
-Полный порт Android-приложения "Питание от Андрюхи" на iOS (SwiftUI).
+Полный порт Android-приложения NutritionTracker на iOS (SwiftUI).
 
 ## Архитектура
 

@@ -50,7 +50,7 @@ struct NutrientProgressSection: View {
         VStack(alignment: .leading, spacing: 8) {
             Button(action: { withAnimation { isExpanded = !expanded } }) {
                 HStack {
-                    Text(title).font(.headline).foregroundColor(.primary)
+                    Text(title).font(AppFont.sectionHeader).foregroundColor(.primary)
                     Spacer()
                     Image(systemName: expanded ? "chevron.up" : "chevron.down")
                         .foregroundColor(.secondary)
@@ -58,21 +58,24 @@ struct NutrientProgressSection: View {
             }
 
             if expanded {
-                ForEach(Array(zip(nutrients, norms)), id: \.0.key) { (nutrient, norm) in
-                    NutrientProgressBar(
-                        key: nutrient.key,
-                        name: nutrient.name,
-                        value: nutrient.value,
-                        target: norm.value,
-                        hasTopFoods: NutrientTopFoods.data[nutrient.key] != nil,
-                        onTap: {
-                            breakdownNutrient = IdentifiableNutrient(key: nutrient.key, name: nutrient.name)
-                        },
-                        onInfoTap: {
-                            topFoodsNutrient = IdentifiableNutrient(key: nutrient.key, name: nutrient.name)
-                        }
-                    )
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(zip(nutrients, norms)), id: \.0.key) { (nutrient, norm) in
+                        NutrientProgressBar(
+                            key: nutrient.key,
+                            name: nutrient.name,
+                            value: nutrient.value,
+                            target: norm.value,
+                            hasTopFoods: NutrientTopFoods.data[nutrient.key] != nil,
+                            onTap: {
+                                breakdownNutrient = IdentifiableNutrient(key: nutrient.key, name: nutrient.name)
+                            },
+                            onInfoTap: {
+                                topFoodsNutrient = IdentifiableNutrient(key: nutrient.key, name: nutrient.name)
+                            }
+                        )
+                    }
                 }
+                .padding(.top, 6)   // small gap between the section header and the progress rows
             }
         }
         .padding()
@@ -135,14 +138,12 @@ struct NutrientProgressBar: View {
                         .foregroundColor(AppColor.primary.opacity(0.6))
                         .onTapGesture { onInfoTap() }
                 }
-                Text(name).font(.caption).lineLimit(1)
+                Text(name).font(AppFont.caption).lineLimit(1)
                 Spacer()
                 Text(String(format: "%.1f / %.1f", value, target))
-                    .font(.caption)
-                    .bold()
+                    .font(AppFont.captionBold)
                 Text("(\(displayPercentage))")
-                    .font(.caption)
-                    .bold()
+                    .font(AppFont.captionBold)
             }
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {

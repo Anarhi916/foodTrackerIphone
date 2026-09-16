@@ -16,7 +16,10 @@
 		2CD16F0A7F87FE378FC8CF8D /* BrandHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62013E9DE406A4B20AFA06BF /* BrandHeader.swift */; };
 		38F99D484D52975AF70CE4AA /* Config.plist.example in Resources */ = {isa = PBXBuildFile; fileRef = 544A42877CE36068FF09C2D0 /* Config.plist.example */; };
 		3F449C05E8F06D049678A51E /* NutrientTopFoods.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26C2CDDE81836F738E6F5D88 /* NutrientTopFoods.swift */; };
+		440B5F0CD42A4C076CF6852D /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 823839B099A3445B4774FC9E /* OFL.txt */; };
 		46D19B120AF84403DC243CDB /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F6818A8D96C3239F8AD7C5D0 /* Localizable.xcstrings */; };
+		473EC1167BAF8D0BDAB5A8A6 /* Roboto-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 88EF96B3BC27820CD91D73F0 /* Roboto-Bold.ttf */; };
+		4C1C99BD51121DA20399248B /* Roboto-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A17FE5E8475833BEC30C837C /* Roboto-Medium.ttf */; };
 		4CFAD7E63DC76D410946FBC1 /* LanguagePickerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53425435C67B97BE4FFF328C /* LanguagePickerButton.swift */; };
 		4E126E24C15F95A2FC698A7C /* LocalizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E56835F2AC6425157E723C8 /* LocalizationManager.swift */; };
 		54DD5E54F56CFB24CF540C13 /* HistoryScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF6F4B10D8A74756B436C36 /* HistoryScreen.swift */; };
@@ -35,12 +38,14 @@
 		A39D39238C13525D1E48EBD7 /* DatabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E004B5EE68FEB1A3E213AF21 /* DatabaseManager.swift */; };
 		A7D564BD678BF73C737483B7 /* MainScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36069CC7A970AF71C89C08AC /* MainScreen.swift */; };
 		ABC144A071E9EE82ED75A428 /* SavedProductsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F6EA6B0665353088A42FC27 /* SavedProductsScreen.swift */; };
+		AC236052FDBC1FC3A32505D4 /* Roboto-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E56D39FED80A7C865DD32F91 /* Roboto-SemiBold.ttf */; };
 		AF3C5010FDC23084EEFC113B /* Transliteration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DCED78F8D40A947432BD270 /* Transliteration.swift */; };
 		AF6A81AA131DBFAB22252A5B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A8C82B42B95E8EB3AB5D8D48 /* Assets.xcassets */; };
 		B0D3B6AA3A57801109B44601 /* PhotoCaptureScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42B59FA51B9288787C9C7FB /* PhotoCaptureScreen.swift */; };
 		C1E46CA69B5A3EAF4939710A /* NutritionRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEB34A7CB1C987C3136D0776 /* NutritionRepository.swift */; };
 		D9BE271D7782AEE94B0F1F9E /* DatabaseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0852C87A96EDC5A66D39802 /* DatabaseModels.swift */; };
 		DA31D388E47BFC9DD74F6090 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33E055AB250CAEAC96AE28D0 /* Localization.swift */; };
+		E00A32BF6731591468E2D8C3 /* Roboto-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 23B8580422E4CD430DB8C1B4 /* Roboto-Regular.ttf */; };
 		E3ED6C5D039396C1F44C8915 /* EditProfileScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCF957431E41A4DD920FEEA8 /* EditProfileScreen.swift */; };
 		F0B7BB3E807941F5A2C81731 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033A84D8AFD4A0335566E0A2 /* DesignTokens.swift */; };
 		F12D3F7CDC59ABAC560D6851 /* FoodShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BDD2F794EEA1A1E2C21B8ED /* FoodShare.swift */; };
@@ -52,6 +57,7 @@
 		0DCED78F8D40A947432BD270 /* Transliteration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transliteration.swift; sourceTree = "<group>"; };
 		1385FF6147B5B0FC726AEA8A /* NutrientProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientProgressView.swift; sourceTree = "<group>"; };
 		17034EF3C6374AA7316EDA97 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		23B8580422E4CD430DB8C1B4 /* Roboto-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Roboto-Regular.ttf"; sourceTree = "<group>"; };
 		26C2CDDE81836F738E6F5D88 /* NutrientTopFoods.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientTopFoods.swift; sourceTree = "<group>"; };
 		2E56835F2AC6425157E723C8 /* LocalizationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationManager.swift; sourceTree = "<group>"; };
 		33E055AB250CAEAC96AE28D0 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
@@ -63,31 +69,35 @@
 		51F80F5A5E18EF1B4A1F65B9 /* AppAttestService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAttestService.swift; sourceTree = "<group>"; };
 		53425435C67B97BE4FFF328C /* LanguagePickerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguagePickerButton.swift; sourceTree = "<group>"; };
 		5380C3870354411AA5A9B5FF /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Config.plist; sourceTree = "<group>"; };
-		544A42877CE36068FF09C2D0 /* Config.plist.example */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Config.plist.example; sourceTree = "<group>"; };
+		544A42877CE36068FF09C2D0 /* Config.plist.example */ = {isa = PBXFileReference; path = Config.plist.example; sourceTree = "<group>"; };
 		5EC5CC32F5A97D5CFA5F32A8 /* StatisticsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsScreen.swift; sourceTree = "<group>"; };
 		62013E9DE406A4B20AFA06BF /* BrandHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandHeader.swift; sourceTree = "<group>"; };
 		6A41AB301EE4464F8BF5C2AC /* APIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfig.swift; sourceTree = "<group>"; };
 		6F6EA6B0665353088A42FC27 /* SavedProductsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedProductsScreen.swift; sourceTree = "<group>"; };
 		72C52FC98D1E411D3D1B50F5 /* NutritionTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionTrackerApp.swift; sourceTree = "<group>"; };
 		757FDA8072964904A8A685D2 /* NutritionTracker.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NutritionTracker.entitlements; sourceTree = "<group>"; };
+		823839B099A3445B4774FC9E /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
 		83D3BB108B52FF32B22E6648 /* MainViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewModel.swift; sourceTree = "<group>"; };
+		88EF96B3BC27820CD91D73F0 /* Roboto-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Roboto-Bold.ttf"; sourceTree = "<group>"; };
 		89CABB92414CB7B2E495D38D /* SyncModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncModels.swift; sourceTree = "<group>"; };
 		9AD3DDE0DBAA7D6B0A216AEF /* OnboardingScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreen.swift; sourceTree = "<group>"; };
 		9BDD2F794EEA1A1E2C21B8ED /* FoodShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodShare.swift; sourceTree = "<group>"; };
 		9F338BF66DE53E3508897617 /* SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManager.swift; sourceTree = "<group>"; };
+		A17FE5E8475833BEC30C837C /* Roboto-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Roboto-Medium.ttf"; sourceTree = "<group>"; };
 		A8C82B42B95E8EB3AB5D8D48 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BF7F5C566B0005837617CC3B /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		CEB34A7CB1C987C3136D0776 /* NutritionRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionRepository.swift; sourceTree = "<group>"; };
 		DAF6F4B10D8A74756B436C36 /* HistoryScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryScreen.swift; sourceTree = "<group>"; };
 		DB7F7C0979E9D3ACDAE649BC /* LoginScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginScreen.swift; sourceTree = "<group>"; };
 		E004B5EE68FEB1A3E213AF21 /* DatabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseManager.swift; sourceTree = "<group>"; };
+		E56D39FED80A7C865DD32F91 /* Roboto-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Roboto-SemiBold.ttf"; sourceTree = "<group>"; };
 		EF4B9D2C224977FA28A24EBD /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
 		F0852C87A96EDC5A66D39802 /* DatabaseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseModels.swift; sourceTree = "<group>"; };
 		F3515F37CA1ABCF824884D55 /* NutrientTopFoodsL10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientTopFoodsL10n.swift; sourceTree = "<group>"; };
 		F3ED646478096D7032E67EB5 /* NetworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkService.swift; sourceTree = "<group>"; };
 		F42B59FA51B9288787C9C7FB /* PhotoCaptureScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCaptureScreen.swift; sourceTree = "<group>"; };
 		F6818A8D96C3239F8AD7C5D0 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
-		F7A7778041A35A7C6ECBF099 /* NutritionTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NutritionTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F7A7778041A35A7C6ECBF099 /* NutritionTracker.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NutritionTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FCF957431E41A4DD920FEEA8 /* EditProfileScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditProfileScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -116,6 +126,18 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		1F0F4E02BF0386D7C143B656 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				823839B099A3445B4774FC9E /* OFL.txt */,
+				88EF96B3BC27820CD91D73F0 /* Roboto-Bold.ttf */,
+				A17FE5E8475833BEC30C837C /* Roboto-Medium.ttf */,
+				23B8580422E4CD430DB8C1B4 /* Roboto-Regular.ttf */,
+				E56D39FED80A7C865DD32F91 /* Roboto-SemiBold.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 		34588539E75171DF0A299CD4 /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
@@ -135,6 +157,7 @@
 				757FDA8072964904A8A685D2 /* NutritionTracker.entitlements */,
 				72C52FC98D1E411D3D1B50F5 /* NutritionTrackerApp.swift */,
 				BEEA6555E16260302F558B5D /* Database */,
+				1F0F4E02BF0386D7C143B656 /* Fonts */,
 				408DE7FF7301EB7B8D826CC4 /* Models */,
 				E5258E9619AECDC10638058F /* Services */,
 				BF436728AC3FC1C509DA0399 /* Utils */,
@@ -248,6 +271,11 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					82DAF825C2EF3FF5EB054D3F = {
+						DevelopmentTeam = 3G27YFHY55;
+					};
+				};
 			};
 			buildConfigurationList = 5410DFDAE310878691ECC5A5 /* Build configuration list for PBXProject "NutritionTracker" */;
 			developmentRegion = ru;
@@ -284,6 +312,11 @@
 				24C82E8FBA5AF64D22A759C0 /* Config.plist in Resources */,
 				38F99D484D52975AF70CE4AA /* Config.plist.example in Resources */,
 				46D19B120AF84403DC243CDB /* Localizable.xcstrings in Resources */,
+				440B5F0CD42A4C076CF6852D /* OFL.txt in Resources */,
+				473EC1167BAF8D0BDAB5A8A6 /* Roboto-Bold.ttf in Resources */,
+				4C1C99BD51121DA20399248B /* Roboto-Medium.ttf in Resources */,
+				E00A32BF6731591468E2D8C3 /* Roboto-Regular.ttf in Resources */,
+				AC236052FDBC1FC3A32505D4 /* Roboto-SemiBold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -339,12 +372,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = NutritionTracker/NutritionTracker.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
+				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 3G27YFHY55;
+				DEVELOPMENT_TEAM = 3G27YFHY55;
 				INFOPLIST_FILE = NutritionTracker/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -352,8 +383,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nutrition.tracker;
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = nutritionTracker;
+				PROVISIONING_PROFILE_SPECIFIER = nutritionTracker;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = 1;

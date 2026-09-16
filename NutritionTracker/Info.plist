@@ -52,6 +52,15 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Bundled Roboto (Apache/OFL) — matches the Android app's system font 1:1
+	     for cross-platform visual parity. Registered here so Font.custom("Roboto-…") works. -->
+	<key>UIAppFonts</key>
+	<array>
+		<string>Roboto-Regular.ttf</string>
+		<string>Roboto-Medium.ttf</string>
+		<string>Roboto-SemiBold.ttf</string>
+		<string>Roboto-Bold.ttf</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

@@ -8,10 +8,10 @@ struct NutritionTrackerApp: App {
     @StateObject private var localization = LocalizationManager.shared
     @StateObject private var auth = AuthManager.shared
 
-    // Brand green. A rich, deep green (#1B9E3E) specified explicitly in sRGB
-    // so the color isn't muted by the display's color space.
+    // Brand green (#1B9E3E) in sRGB — matches the Android app's rendered app-bar color
+    // exactly (27,158,62). Display-P3 would over-saturate it to (0,161,45).
     static let brandGreenUI = UIColor(
-        displayP3Red: 0x1B/255.0, green: 0x9E/255.0, blue: 0x3E/255.0, alpha: 1.0
+        red: 0x1B/255.0, green: 0x9E/255.0, blue: 0x3E/255.0, alpha: 1.0
     )
     static let brandGreen = Color(.sRGB, red: 0x1B/255.0, green: 0x9E/255.0, blue: 0x3E/255.0)
 
@@ -22,7 +22,8 @@ struct NutritionTrackerApp: App {
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = Self.brandGreenUI
         appearance.shadowColor = .clear   // no translucent separator line
-        appearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+        let navTitleFont = UIFont(name: "Roboto-Medium", size: 17) ?? .systemFont(ofSize: 17, weight: .medium)
+        appearance.titleTextAttributes = [.foregroundColor: UIColor.white, .font: navTitleFont]
         appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.white]
 
         // Remove the "capsule" background under toolbar icons (iOS 26 draws them by default).
@@ -45,6 +46,7 @@ struct NutritionTrackerApp: App {
                 .environmentObject(localization)
                 .environmentObject(auth)
                 .environment(\.locale, localization.locale)
+                .environment(\.font, AppFont.body)   // app-wide default → Roboto (parity with Android)
                 .tint(Color(Self.brandGreenUI))   // green accent for controls on all screens
                 .environment(\.dynamicTypeSize, .xLarge)
                 .id(localization.language)   // rebuild the whole tree on language change
