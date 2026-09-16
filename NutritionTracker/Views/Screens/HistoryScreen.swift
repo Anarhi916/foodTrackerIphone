@@ -13,7 +13,7 @@ struct HistoryScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             BrandHeader(
-                String(localized: "История"),
+                L("История"),
                 leading: {
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
@@ -130,10 +130,10 @@ struct HistoryScreen: View {
                     }
 
                     HStack(spacing: 8) {
-                        summaryChip(String(localized: "Ккал"), value: String(format: "%.0f", totals.calories))
-                        summaryChip(String(localized: "Б"), value: String(format: "%.1f %@", totals.protein, String(localized: "г")))
-                        summaryChip(String(localized: "Ж"), value: String(format: "%.1f %@", totals.fat, String(localized: "г")))
-                        summaryChip(String(localized: "У"), value: String(format: "%.1f %@", totals.carbs, String(localized: "г")))
+                        summaryChip(L("Ккал"), value: String(format: "%.0f", totals.calories))
+                        summaryChip(L("Б"), value: String(format: "%.1f %@", totals.protein, L("г")))
+                        summaryChip(L("Ж"), value: String(format: "%.1f %@", totals.fat, L("г")))
+                        summaryChip(L("У"), value: String(format: "%.1f %@", totals.carbs, L("г")))
                     }
 
                     if isEditing {
@@ -191,19 +191,20 @@ struct HistoryScreen: View {
 
                     if let norms = viewModel.dailyNorms {
                         Divider()
-                        let bars: [(name: String, value: Double, target: Double, unit: String, upperRatio: Double)] = [
-                            (String(localized: "Калории"), totals.calories, norms.calories, String(localized: "ккал"), 1.5),
-                            (String(localized: "Белки"), totals.protein, norms.protein, String(localized: "г"), 1.5),
-                            (String(localized: "Жиры"), totals.fat, norms.fat, String(localized: "г"), 1.5),
-                            (String(localized: "Углеводы"), totals.carbs, norms.carbs, String(localized: "г"), 1.5),
-                            (String(localized: "Клетчатка"), totals.fiber, norms.fiber, String(localized: "г"), 1.5),
-                            (String(localized: "Насыщ. жиры"), totals.saturatedFat, norms.saturatedFat, String(localized: "г"), 1.0),
-                            (String(localized: "Мононенасыщ."), totals.monounsaturatedFat, norms.monounsaturatedFat, String(localized: "г"), 3.0),
-                            (String(localized: "Полиненасыщ."), totals.polyunsaturatedFat, norms.polyunsaturatedFat, String(localized: "г"), 3.0),
-                            (String(localized: "Холестерин"), totals.cholesterol, norms.cholesterol, String(localized: "мг"), 1.3)
+                        let bars: [(name: String, value: Double, target: Double, unit: String, upperRatio: Double, showBar: Bool)] = [
+                            (L("Калории"), totals.calories, norms.calories, L("ккал"), 1.5, true),
+                            (L("Белки"), totals.protein, norms.protein, L("г"), 1.5, true),
+                            (L("Жиры"), totals.fat, norms.fat, L("г"), 1.5, true),
+                            (L("Углеводы"), totals.carbs, norms.carbs, L("г"), 1.5, true),
+                            (L("Клетчатка"), totals.fiber, norms.fiber, L("г"), 1.5, true),
+                            (L("Насыщ. жиры"), totals.saturatedFat, norms.saturatedFat, L("г"), 1.0, true),
+                            (L("Мононенасыщ."), totals.monounsaturatedFat, norms.monounsaturatedFat, L("г"), 3.0, true),
+                            (L("Полиненасыщ."), totals.polyunsaturatedFat, norms.polyunsaturatedFat, L("г"), 3.0, true),
+                            // Cholesterol: keep fact/target numbers, hide the (perpetually red) bar
+                            (L("Холестерин"), totals.cholesterol, norms.cholesterol, L("мг"), 1.3, false)
                         ]
                         ForEach(bars, id: \.name) { bar in
-                            historyProgressBar(name: bar.name, value: bar.value, target: bar.target, unit: bar.unit, upperRatio: bar.upperRatio)
+                            historyProgressBar(name: bar.name, value: bar.value, target: bar.target, unit: bar.unit, upperRatio: bar.upperRatio, showBar: bar.showBar)
                         }
                     }
                 }
@@ -237,7 +238,7 @@ struct HistoryScreen: View {
         .background(RoundedRectangle(cornerRadius: 8).fill(AppColor.surfaceVariant))
     }
 
-    private func historyProgressBar(name: String, value: Double, target: Double, unit: String, upperRatio: Double) -> some View {
+    private func historyProgressBar(name: String, value: Double, target: Double, unit: String, upperRatio: Double, showBar: Bool = true) -> some View {
         let pct = target > 0 ? value / target : 0
         let color: Color = {
             if pct > upperRatio * 1.3 { return AppColor.progressRed }
@@ -253,14 +254,16 @@ struct HistoryScreen: View {
                 Text(String(format: "%.1f / %.1f %@ (%d%%)", value, target, unit, Int(pct * 100)))
                     .font(.caption2)
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 3).fill(AppColor.surfaceVariant).frame(height: 7)
-                    RoundedRectangle(cornerRadius: 3).fill(color)
-                        .frame(width: min(CGFloat(pct) * geo.size.width, geo.size.width), height: 7)
+            if showBar {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 3).fill(AppColor.surfaceVariant).frame(height: 7)
+                        RoundedRectangle(cornerRadius: 3).fill(color)
+                            .frame(width: min(CGFloat(pct) * geo.size.width, geo.size.width), height: 7)
+                    }
                 }
+                .frame(height: 7)
             }
-            .frame(height: 7)
         }
     }
 
@@ -271,8 +274,8 @@ struct HistoryScreen: View {
         guard let date = formatter.date(from: dateStr) else { return dateStr }
 
         let calendar = Calendar.current
-        if calendar.isDateInToday(date) { return String(localized: "Сегодня") }
-        if calendar.isDateInYesterday(date) { return String(localized: "Вчера") }
+        if calendar.isDateInToday(date) { return L("Сегодня") }
+        if calendar.isDateInYesterday(date) { return L("Вчера") }
 
         let display = DateFormatter()
         display.locale = .current

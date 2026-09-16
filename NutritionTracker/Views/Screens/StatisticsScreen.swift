@@ -7,9 +7,9 @@ enum StatPeriod: String, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .week: return String(localized: "Неделя")
-        case .month: return String(localized: "Месяц")
-        case .custom: return String(localized: "Свой период")
+        case .week: return L("Неделя")
+        case .month: return L("Месяц")
+        case .custom: return L("Свой период")
         }
     }
 }
@@ -59,7 +59,7 @@ struct StatisticsScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             BrandHeader(
-                String(localized: "Статистика"),
+                L("Статистика"),
                 leading: {
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
@@ -75,10 +75,10 @@ struct StatisticsScreen: View {
                         ProgressView().padding(.top, 40)
                     } else if let t = totals {
                         let normForPeriod = viewModel.dailyNorms.map { $0 * Double(numDays) }
-                        NutrientStatCard(title: String(localized: "БЖУ и Калории"), items: t.macrosList(), normItems: normForPeriod?.macrosList())
-                        NutrientStatCard(title: String(localized: "Витамины"), items: t.vitaminsList(), normItems: normForPeriod?.vitaminsList())
-                        NutrientStatCard(title: String(localized: "Минералы и микроэлементы"), items: t.mineralsList(), normItems: normForPeriod?.mineralsList())
-                        NutrientStatCard(title: String(localized: "Жиры (детально)"), items: t.fatDetailsList(), normItems: normForPeriod?.fatDetailsList())
+                        NutrientStatCard(title: L("БЖУ и Калории"), items: t.macrosList(), normItems: normForPeriod?.macrosList())
+                        NutrientStatCard(title: L("Витамины"), items: t.vitaminsList(), normItems: normForPeriod?.vitaminsList())
+                        NutrientStatCard(title: L("Минералы и микроэлементы"), items: t.mineralsList(), normItems: normForPeriod?.mineralsList())
+                        NutrientStatCard(title: L("Жиры (детально)"), items: t.fatDetailsList(), normItems: normForPeriod?.fatDetailsList())
                     }
                 }
                 .padding(16)
@@ -138,7 +138,7 @@ struct StatisticsScreen: View {
                 }
             }
 
-            Text("\(displayFormatter.string(from: effectiveStart)) — \(displayFormatter.string(from: effectiveEnd)) \(String(format: String(localized: "(%lld дн.)"), numDays))")
+            Text("\(displayFormatter.string(from: effectiveStart)) — \(displayFormatter.string(from: effectiveEnd)) \(String(format: L("(%lld дн.)"), numDays))")
                 .font(.caption)
                 .foregroundColor(.secondary)
 
@@ -160,7 +160,9 @@ struct StatisticsScreen: View {
             .sorted { $0.date < $1.date }
 
         var csv = "\u{FEFF}"
-        csv += String(localized: "Дата,Продукт,Вес (г)") + "\n"
+        // Neutral, machine-readable header — kept identical across languages and
+        // platforms (Android emits the same) so the exported file is a stable contract.
+        csv += "Date,Product,Weight (g)\n"
         var lastDate = ""
         for entry in entries {
             if !lastDate.isEmpty && entry.date != lastDate {

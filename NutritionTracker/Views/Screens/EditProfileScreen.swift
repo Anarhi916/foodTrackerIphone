@@ -11,7 +11,7 @@ struct EditProfileScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             BrandHeader(
-                String(localized: "Профиль"),
+                L("Профиль"),
                 leading: {
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
@@ -202,9 +202,9 @@ private struct ProfileDataTab: View {
                 // Legal links + medical disclaimer (App Store requirement).
                 VStack(spacing: 8) {
                     HStack(spacing: 16) {
-                        Link(String(localized: "Политика конфиденциальности"),
+                        Link(L("Политика конфиденциальности"),
                              destination: URL(string: "https://nutritiontracker.uk/privacy")!)
-                        Link(String(localized: "Условия использования"),
+                        Link(L("Условия использования"),
                              destination: URL(string: "https://nutritiontracker.uk/terms")!)
                     }
                     .font(.footnote)
@@ -279,16 +279,16 @@ private struct ProfileDataTab: View {
 
     private func submit() {
         guard let a = Int(age) else {
-            localError = String(localized: "Введите корректные возраст, вес и рост")
+            localError = L("Введите корректные возраст, вес и рост")
             return
         }
         let (weightKg, heightCmValue) = currentBodyInCanonical(assuming: unitSystem)
         guard let weightKg, let heightCmValue else {
-            localError = String(localized: "Введите корректные возраст, вес и рост")
+            localError = L("Введите корректные возраст, вес и рост")
             return
         }
         if goals.trimmingCharacters(in: .whitespaces).isEmpty {
-            localError = String(localized: "Опишите ваши цели")
+            localError = L("Опишите ваши цели")
             return
         }
         localError = nil
@@ -359,9 +359,9 @@ private struct DailyNormsTab: View {
                         }
                     }
 
-                    normsSection(title: String(localized: "БЖУ и Калории"), items: macroKeys)
-                    normsSection(title: String(localized: "Витамины"), items: vitaminKeys)
-                    normsSection(title: String(localized: "Минералы и микроэлементы"), items: mineralKeys)
+                    normsSection(title: L("БЖУ и Калории"), items: macroKeys)
+                    normsSection(title: L("Витамины"), items: vitaminKeys)
+                    normsSection(title: L("Минералы и микроэлементы"), items: mineralKeys)
                 }
                 .padding()
             }

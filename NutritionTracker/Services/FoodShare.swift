@@ -113,7 +113,7 @@ enum FoodShare {
     }
 
     static func share(link: String, foodName: String, from viewController: UIViewController? = nil) {
-        let text = String(format: String(localized: "Делюсь блюдом «%@» в NutritionTracker:\n%@"), foodName, link)
+        let text = String(format: L("Делюсь блюдом «%@» в NutritionTracker:\n%@"), foodName, link)
         let activity = UIActivityViewController(activityItems: [text], applicationActivities: nil)
         let vc = viewController ?? UIApplication.shared.connectedScenes
             .compactMap { ($0 as? UIWindowScene)?.keyWindow?.rootViewController }

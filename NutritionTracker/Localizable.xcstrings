@@ -1,162 +1,6 @@
 {
   "sourceLanguage" : "ru",
   "strings" : {
-    "Политика конфиденциальности" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Datenschutzrichtlinie"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Privacy Policy"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Política de privacidad"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Politique de confidentialité"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Informativa sulla privacy"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Política de Privacidade"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Политика конфиденциальности"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Політика конфіденційності"
-          }
-        }
-      }
-    },
-    "Условия использования" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nutzungsbedingungen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Terms of Service"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Términos de servicio"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Conditions d’utilisation"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Termini di servizio"
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Termos de Serviço"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Условия использования"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Умови використання"
-          }
-        }
-      }
-    },
-    "Информация о питании и нормы носят справочный характер, могут быть неточными и не являются медицинской консультацией. Перед изменением рациона проконсультируйтесь со специалистом." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Ernährungsangaben und Zielwerte dienen nur zur Orientierung, können ungenau sein und stellen keine medizinische Beratung dar. Konsultieren Sie vor einer Ernährungsumstellung eine Fachkraft."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nutrition information and targets are for reference only, may be inaccurate, and do not constitute medical advice. Consult a professional before changing your diet."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La información nutricional y los objetivos son solo de referencia, pueden ser inexactos y no constituyen asesoramiento médico. Consulte a un profesional antes de cambiar su dieta."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les informations nutritionnelles et les objectifs sont fournis à titre indicatif, peuvent être inexacts et ne constituent pas un avis médical. Consultez un professionnel avant de modifier votre alimentation."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le informazioni nutrizionali e gli obiettivi hanno carattere puramente indicativo, possono essere imprecisi e non costituiscono un parere medico. Consulta un professionista prima di modificare la tua alimentazione."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "As informações nutricionais e as metas são apenas para referência, podem ser imprecisas e não constituem aconselhamento médico. Consulte um profissional antes de alterar sua dieta."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Информация о питании и нормы носят справочный характер, могут быть неточными и не являются медицинской консультацией. Перед изменением рациона проконсультируйтесь со специалистом."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Інформація про харчування та норми має довідковий характер, може бути неточною та не є медичною консультацією. Перед зміною раціону проконсультуйтеся з фахівцем."
-          }
-        }
-      }
-    },
     "" : {
 
     },
@@ -167,6 +11,7 @@
 
     },
     "(%lld дн.)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -219,6 +64,7 @@
       }
     },
     "(%lld%% дн.)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -274,6 +120,7 @@
 
     },
     "%.0f ккал" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -326,6 +173,7 @@
       }
     },
     "%.0f ккал • Б%.1f Ж%.1f У%.1f" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -378,6 +226,7 @@
       }
     },
     "%.0f ккал • Б%.1f Ж%.1f У%.1f /100г" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -430,6 +279,7 @@
       }
     },
     "%.1f г" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -525,6 +375,7 @@
 
     },
     "%lld из %lld продуктов" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -587,6 +438,9 @@
       }
     },
     "%lld%%" : {
+
+    },
+    "%lldг" : {
 
     },
     "✕" : {
@@ -705,6 +559,7 @@
 
     },
     "Apple не вернул токен" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -916,6 +771,7 @@
       }
     },
     "oz" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1490,6 +1346,7 @@
       }
     },
     "Белки" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1542,6 +1399,7 @@
       }
     },
     "Белки (г)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1855,6 +1713,7 @@
       }
     },
     "Введите корректные возраст, вес и рост" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2219,6 +2078,7 @@
       }
     },
     "Витамин A (мкг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2271,6 +2131,7 @@
       }
     },
     "Витамин B1 (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2323,6 +2184,7 @@
       }
     },
     "Витамин B2 (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2375,6 +2237,7 @@
       }
     },
     "Витамин B3 (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2427,6 +2290,7 @@
       }
     },
     "Витамин B5 (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2479,6 +2343,7 @@
       }
     },
     "Витамин B6 (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2531,6 +2396,7 @@
       }
     },
     "Витамин B7 (мкг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2583,6 +2449,7 @@
       }
     },
     "Витамин B9 (мкг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2635,6 +2502,7 @@
       }
     },
     "Витамин B12 (мкг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2687,6 +2555,7 @@
       }
     },
     "Витамин C (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2739,6 +2608,7 @@
       }
     },
     "Витамин D (мкг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2791,6 +2661,7 @@
       }
     },
     "Витамин E (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2843,6 +2714,7 @@
       }
     },
     "Витамин K (мкг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2895,6 +2767,7 @@
       }
     },
     "Витамины" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3155,6 +3028,7 @@
       }
     },
     "Вход" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3259,6 +3133,7 @@
       }
     },
     "Вход через Apple не удался" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3311,6 +3186,7 @@
       }
     },
     "Вход через Google отменён" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3363,6 +3239,7 @@
       }
     },
     "Вчера" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3625,6 +3502,7 @@
       }
     },
     "Дата,Продукт,Вес (г)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3677,6 +3555,7 @@
       }
     },
     "Делюсь блюдом «%@» в NutritionTracker:\n%@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3883,9 +3762,6 @@
           }
         }
       }
-    },
-    "Добавить ингредиент" : {
-
     },
     "Добавить продукт" : {
 
@@ -4151,6 +4027,7 @@
       }
     },
     "Железо (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4255,6 +4132,7 @@
       }
     },
     "Жиры" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4307,6 +4185,7 @@
       }
     },
     "Жиры (г)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4359,6 +4238,7 @@
       }
     },
     "Жиры (детализация)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4411,6 +4291,7 @@
       }
     },
     "Жиры (детально)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4982,6 +4863,58 @@
         }
       }
     },
+    "Информация о питании и нормы носят справочный характер, могут быть неточными и не являются медицинской консультацией. Перед изменением рациона проконсультируйтесь со специалистом." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Ernährungsangaben und Zielwerte dienen nur zur Orientierung, können ungenau sein und stellen keine medizinische Beratung dar. Konsultieren Sie vor einer Ernährungsumstellung eine Fachkraft."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nutrition information and targets are for reference only, may be inaccurate, and do not constitute medical advice. Consult a professional before changing your diet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La información nutricional y los objetivos son solo de referencia, pueden ser inexactos y no constituyen asesoramiento médico. Consulte a un profesional antes de cambiar su dieta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les informations nutritionnelles et les objectifs sont fournis à titre indicatif, peuvent être inexacts et ne constituent pas un avis médical. Consultez un professionnel avant de modifier votre alimentation."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le informazioni nutrizionali e gli obiettivi hanno carattere puramente indicativo, possono essere imprecisi e non costituiscono un parere medico. Consulta un professionista prima di modificare la tua alimentazione."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As informações nutricionais e as metas são apenas para referência, podem ser imprecisas e não constituem aconselhamento médico. Consulte um profissional antes de alterar sua dieta."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Информация о питании и нормы носят справочный характер, могут быть неточными и не являются медицинской консультацией. Перед изменением рациона проконсультируйтесь со специалистом."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Інформація про харчування та норми має довідковий характер, може бути неточною та не є медичною консультацією. Перед зміною раціону проконсультуйтеся з фахівцем."
+          }
+        }
+      }
+    },
     "История" : {
       "localizations" : {
         "de" : {
@@ -5140,6 +5073,7 @@
       }
     },
     "Йод (мкг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5192,6 +5126,7 @@
       }
     },
     "Калий (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5244,6 +5179,7 @@
       }
     },
     "Калории" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5296,6 +5232,7 @@
       }
     },
     "Калории (ккал)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5348,6 +5285,7 @@
       }
     },
     "Кальций (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5504,6 +5442,7 @@
       }
     },
     "ккал" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5608,6 +5547,7 @@
       }
     },
     "Клетчатка" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5660,6 +5600,7 @@
       }
     },
     "Клетчатка (г)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5870,6 +5811,7 @@
       }
     },
     "Магний (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5975,6 +5917,7 @@
       }
     },
     "Марганец (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6027,6 +5970,7 @@
       }
     },
     "мг" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6079,6 +6023,7 @@
       }
     },
     "Медь (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6131,6 +6076,7 @@
       }
     },
     "Месяц" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6235,6 +6181,7 @@
       }
     },
     "Минералы" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6287,6 +6234,7 @@
       }
     },
     "Минералы и микроэлементы" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6391,6 +6339,7 @@
       }
     },
     "мкг" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6443,6 +6392,7 @@
       }
     },
     "Мононенасыщ." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6495,6 +6445,7 @@
       }
     },
     "Мононенасыщенные жиры (г)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7015,6 +6966,7 @@
       }
     },
     "Насыщ. жиры" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7067,6 +7019,7 @@
       }
     },
     "Насыщенные жиры (г)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7119,6 +7072,7 @@
       }
     },
     "Натрий (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7224,6 +7178,7 @@
       }
     },
     "Не удалось войти через Apple" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7276,6 +7231,7 @@
       }
     },
     "Не удалось войти через Google" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7327,10 +7283,8 @@
         }
       }
     },
-    "Не удалось получить данные о нутриентах для введённых продуктов" : {
-
-    },
     "Не удалось распознать «%@»" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7383,6 +7337,7 @@
       }
     },
     "Не удалось распознать «%@»: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7433,9 +7388,6 @@
           }
         }
       }
-    },
-    "Не удалось распознать продукты из описания" : {
-
     },
     "Не удалось сгенерировать QR-код" : {
       "localizations" : {
@@ -7490,6 +7442,7 @@
       }
     },
     "Неделя" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7752,6 +7705,7 @@
       }
     },
     "Нет подключения к интернету. Проверьте сеть и попробуйте снова." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8220,6 +8174,7 @@
       }
     },
     "Опишите ваши цели" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8428,6 +8383,7 @@
       }
     },
     "Ошибка анализа: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8480,6 +8436,7 @@
       }
     },
     "Ошибка обновления профиля: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8585,6 +8542,7 @@
       }
     },
     "Ошибка поиска: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8637,6 +8595,7 @@
       }
     },
     "Ошибка распознавания фото: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9107,6 +9066,7 @@
       }
     },
     "Полиненасыщ." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9159,6 +9119,7 @@
       }
     },
     "Полиненасыщенные жиры (г)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9210,7 +9171,61 @@
         }
       }
     },
+    "Политика конфиденциальности" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datenschutzrichtlinie"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy Policy"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Política de privacidad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Politique de confidentialité"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Informativa sulla privacy"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Política de Privacidade"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Политика конфиденциальности"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Політика конфіденційності"
+          }
+        }
+      }
+    },
     "Превышено время ожидания. Проверьте интернет и попробуйте снова." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9367,6 +9382,7 @@
       }
     },
     "Продукт не найден по штрих-коду: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10044,6 +10060,7 @@
       }
     },
     "Свой период" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10148,6 +10165,7 @@
       }
     },
     "Селен (мкг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10200,6 +10218,7 @@
       }
     },
     "Системный" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10409,6 +10428,7 @@
       }
     },
     "Сканировать штрихкод" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10819,6 +10839,7 @@
       }
     },
     "Сумма весов ингредиентов должна быть больше 0" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11079,6 +11100,7 @@
       }
     },
     "Углеводы" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11131,6 +11153,7 @@
       }
     },
     "Углеводы (г)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11654,6 +11677,59 @@
         }
       }
     },
+    "Условия использования" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nutzungsbedingungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terms of Service"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Términos de servicio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conditions d’utilisation"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Termini di servizio"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Termos de Serviço"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Условия использования"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Умови використання"
+          }
+        }
+      }
+    },
     "Факт" : {
       "localizations" : {
         "de" : {
@@ -11707,6 +11783,7 @@
       }
     },
     "Фосфор (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11916,6 +11993,7 @@
       }
     },
     "Холестерин" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11968,6 +12046,7 @@
       }
     },
     "Холестерин (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12072,6 +12151,7 @@
       }
     },
     "Цинк (мг)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12386,6 +12466,7 @@
       }
     },
     "Язык" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

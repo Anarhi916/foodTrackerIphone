@@ -14,8 +14,8 @@ enum Gender: String, CaseIterable {
     /// Localized label shown in the UI.
     var displayName: String {
         switch self {
-        case .male: return String(localized: "Мужской")
-        case .female: return String(localized: "Женский")
+        case .male: return L("Мужской")
+        case .female: return L("Женский")
         }
     }
 
@@ -177,9 +177,9 @@ enum WeightFormat {
     static let gramsPerPound = 453.592
 
     /// Localized short unit label for grams ("г"/"g"), from the string catalog.
-    static var gramUnit: String { String(localized: "г") }
+    static var gramUnit: String { L("г") }
     /// Localized short unit label for ounces.
-    static var ounceUnit: String { String(localized: "oz") }
+    static var ounceUnit: String { L("oz") }
 
     /// Compact weight for tables/rows, e.g. "150 г" or "5.3 oz".
     static func short(grams: Double) -> String {

@@ -8,7 +8,7 @@ struct LoginScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            BrandHeader(String(localized: "Вход"))
+            BrandHeader(L("Вход"))
 
             ScrollView {
                 VStack(spacing: 24) {

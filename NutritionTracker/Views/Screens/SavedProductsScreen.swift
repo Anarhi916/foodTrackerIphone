@@ -28,7 +28,7 @@ struct SavedProductsScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             BrandHeader(
-                String(localized: "Сохранённые продукты"),
+                L("Сохранённые продукты"),
                 leading: {
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
@@ -64,7 +64,7 @@ struct SavedProductsScreen: View {
             .padding(.top, 8)
 
             // Counter
-            Text(String(format: String(localized: "%lld из %lld продуктов"), filteredFoods.count, viewModel.cachedFoods.count))
+            Text(String(format: L("%lld из %lld продуктов"), filteredFoods.count, viewModel.cachedFoods.count))
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.top, 4)
@@ -146,7 +146,7 @@ struct SavedProductsScreen: View {
                 let nutrients = viewModel.parseNutrients(entry.nutrientsPer100gJson)
                 let w = Double(quickAddWeight) ?? 100
                 let factor = w / 100.0
-                Text("\(entry.keyOriginal)\n\(String(format: String(localized: "%.0f ккал • Б%.1f Ж%.1f У%.1f"), nutrients.calories * factor, nutrients.protein * factor, nutrients.fat * factor, nutrients.carbs * factor))")
+                Text("\(entry.keyOriginal)\n\(String(format: L("%.0f ккал • Б%.1f Ж%.1f У%.1f"), nutrients.calories * factor, nutrients.protein * factor, nutrients.fat * factor, nutrients.carbs * factor))")
             }
         }
         .confirmationDialog("Что добавить?", isPresented: $showAddTypeDialog, titleVisibility: .visible) {
@@ -207,7 +207,7 @@ struct SavedProductsScreen: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
-                Text(String(format: String(localized: "%.0f ккал • Б%.1f Ж%.1f У%.1f /100г"), nutrients.calories, nutrients.protein, nutrients.fat, nutrients.carbs))
+                Text(String(format: L("%.0f ккал • Б%.1f Ж%.1f У%.1f /100г"), nutrients.calories, nutrients.protein, nutrients.fat, nutrients.carbs))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -447,7 +447,7 @@ struct AddCustomDishSheet: View {
                         }
 
                         Button { addIngredient() } label: {
-                            Label(String(localized: "Добавить ингредиент"), systemImage: "plus")
+                            Label(L("Добавить ингредиент"), systemImage: "plus")
                                 .font(.subheadline)
                                 .foregroundColor(AppColor.primary)
                         }
@@ -458,7 +458,7 @@ struct AddCustomDishSheet: View {
                             scanningIngredientIdx = -1
                             isShowingScanner = true
                         } label: {
-                            Label(String(localized: "Сканировать штрихкод"), systemImage: "barcode.viewfinder")
+                            Label(L("Сканировать штрихкод"), systemImage: "barcode.viewfinder")
                                 .font(.subheadline)
                                 .foregroundColor(AppColor.primary)
                         }
@@ -586,7 +586,7 @@ struct AddCustomDishSheet: View {
                                         .font(.subheadline)
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
-                                    Text(String(format: String(localized: "%.0f ккал • Б%.1f Ж%.1f У%.1f /100г"),
+                                    Text(String(format: L("%.0f ккал • Б%.1f Ж%.1f У%.1f /100г"),
                                                 nutrients.calories, nutrients.protein, nutrients.fat, nutrients.carbs))
                                         .font(.caption)
                                         .foregroundColor(.secondary)
@@ -682,7 +682,7 @@ struct QrShareSheet: View {
                         .foregroundColor(.red)
                 }
 
-                Text(String(format: String(localized: "%.0f ккал • Б%.1f Ж%.1f У%.1f /100г"),
+                Text(String(format: L("%.0f ккал • Б%.1f Ж%.1f У%.1f /100г"),
                             nutrients.calories, nutrients.protein, nutrients.fat, nutrients.carbs))
                     .font(.caption)
                     .foregroundColor(.secondary)

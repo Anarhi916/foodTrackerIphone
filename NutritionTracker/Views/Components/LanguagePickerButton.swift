@@ -8,7 +8,7 @@ struct LanguagePickerButton: View {
 
     private var currentLabel: String {
         let tag = localization.language
-        if tag.isEmpty { return String(localized: "Системный") }
+        if tag.isEmpty { return L("Системный") }
         return AppLocale.endonym(for: String(tag.prefix(2)))
     }
 
@@ -24,14 +24,14 @@ struct LanguagePickerButton: View {
             .background(RoundedRectangle(cornerRadius: 8).fill(AppColor.surfaceVariant))
         }
         .buttonStyle(.plain)
-        .confirmationDialog(String(localized: "Язык"), isPresented: $showPicker, titleVisibility: .visible) {
+        .confirmationDialog(L("Язык"), isPresented: $showPicker, titleVisibility: .visible) {
             ForEach(AppLocale.supported, id: \.code) { lang in
-                let label = lang.code.isEmpty ? String(localized: "Системный") : lang.endonym
+                let label = lang.code.isEmpty ? L("Системный") : lang.endonym
                 Button(label) {
                     localization.setLanguage(lang.code)
                 }
             }
-            Button(String(localized: "Отмена"), role: .cancel) {}
+            Button(L("Отмена"), role: .cancel) {}
         }
     }
 }

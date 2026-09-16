@@ -600,10 +600,10 @@ struct NutrientTopFoods {
     /// Localized short unit label ("ккал"/"г"/"мг"/"мкг") via the string catalog.
     static func localizedUnit(_ russianUnit: String) -> String {
         switch russianUnit {
-        case "ккал": return String(localized: "ккал")
-        case "г": return String(localized: "г")
-        case "мг": return String(localized: "мг")
-        case "мкг": return String(localized: "мкг")
+        case "ккал": return L("ккал")
+        case "г": return L("г")
+        case "мг": return L("мг")
+        case "мкг": return L("мкг")
         default: return russianUnit
         }
     }

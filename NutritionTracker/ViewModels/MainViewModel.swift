@@ -143,7 +143,7 @@ class MainViewModel: ObservableObject {
                 isLoading = false
             } catch {
                 isLoading = false
-                errorMessage = String(format: String(localized: "Ошибка анализа: %@"), error.localizedDescription)
+                errorMessage = String(format: L("Ошибка анализа: %@"), error.localizedDescription)
             }
         }
     }
@@ -251,12 +251,12 @@ class MainViewModel: ObservableObject {
                     barcodeWeight = "100"
                     showBarcodeWeightDialog = true
                 } else {
-                    errorMessage = String(format: String(localized: "Продукт не найден по штрих-коду: %@"), barcode)
+                    errorMessage = String(format: L("Продукт не найден по штрих-коду: %@"), barcode)
                 }
                 isLoading = false
             } catch {
                 isLoading = false
-                errorMessage = String(format: String(localized: "Ошибка поиска: %@"), error.localizedDescription)
+                errorMessage = String(format: L("Ошибка поиска: %@"), error.localizedDescription)
             }
         }
     }
@@ -306,11 +306,11 @@ class MainViewModel: ObservableObject {
             } catch {
                 isLoading = false
                 if error.localizedDescription.contains("resolve host") || error.localizedDescription.contains("No address") {
-                    errorMessage = String(localized: "Нет подключения к интернету. Проверьте сеть и попробуйте снова.")
+                    errorMessage = L("Нет подключения к интернету. Проверьте сеть и попробуйте снова.")
                 } else if error.localizedDescription.contains("timeout") {
-                    errorMessage = String(localized: "Превышено время ожидания. Проверьте интернет и попробуйте снова.")
+                    errorMessage = L("Превышено время ожидания. Проверьте интернет и попробуйте снова.")
                 } else {
-                    errorMessage = String(format: String(localized: "Ошибка распознавания фото: %@"), error.localizedDescription)
+                    errorMessage = String(format: L("Ошибка распознавания фото: %@"), error.localizedDescription)
                 }
             }
         }
@@ -353,7 +353,7 @@ class MainViewModel: ObservableObject {
                     isLoading = false
                 } catch {
                     isLoading = false
-                    errorMessage = String(format: String(localized: "Ошибка анализа: %@"), error.localizedDescription)
+                    errorMessage = String(format: L("Ошибка анализа: %@"), error.localizedDescription)
                 }
             }
         }
@@ -392,7 +392,7 @@ class MainViewModel: ObservableObject {
                 onComplete()
             } catch {
                 isLoading = false
-                errorMessage = String(format: String(localized: "Ошибка обновления профиля: %@"), error.localizedDescription)
+                errorMessage = String(format: L("Ошибка обновления профиля: %@"), error.localizedDescription)
             }
         }
     }
@@ -442,12 +442,12 @@ class MainViewModel: ObservableObject {
                     results = try await repo.analyzeFoodText(query)
                 } catch {
                     throw NSError(domain: "CustomDish", code: 1, userInfo: [
-                        NSLocalizedDescriptionKey: String(format: String(localized: "Не удалось распознать «%@»: %@"), trimmed, error.localizedDescription)
+                        NSLocalizedDescriptionKey: String(format: L("Не удалось распознать «%@»: %@"), trimmed, error.localizedDescription)
                     ])
                 }
                 guard !results.isEmpty else {
                     throw NSError(domain: "CustomDish", code: 1, userInfo: [
-                        NSLocalizedDescriptionKey: String(format: String(localized: "Не удалось распознать «%@»"), trimmed)
+                        NSLocalizedDescriptionKey: String(format: L("Не удалось распознать «%@»"), trimmed)
                     ])
                 }
                 for r in results { total = total + r.nutrients }
@@ -456,7 +456,7 @@ class MainViewModel: ObservableObject {
         }
         guard totalWeight > 0 else {
             throw NSError(domain: "CustomDish", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: String(localized: "Сумма весов ингредиентов должна быть больше 0")
+                NSLocalizedDescriptionKey: L("Сумма весов ингредиентов должна быть больше 0")
             ])
         }
         let per100g = total * (100.0 / totalWeight)

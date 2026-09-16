@@ -17,7 +17,7 @@ struct MainScreen: View {
             VStack(spacing: 0) {
                 // Custom green header (without the iOS 26 system glass capsules).
                 BrandHeader(
-                    String(localized: "Nutrition Tracker"),
+                    L("Nutrition Tracker"),
                     leading: {
                         Menu {
                             NavigationLink(destination: EditProfileScreen(viewModel: viewModel)) {
@@ -126,7 +126,7 @@ struct MainScreen: View {
                 let nutrients = viewModel.parseNutrients(entry.nutrientsPer100gJson)
                 let w = Double(quickAddWeight) ?? 100
                 let factor = w / 100.0
-                Text("\(entry.keyOriginal)\n\(String(format: String(localized: "%.0f ккал • Б%.1f Ж%.1f У%.1f"), nutrients.calories * factor, nutrients.protein * factor, nutrients.fat * factor, nutrients.carbs * factor))")
+                Text("\(entry.keyOriginal)\n\(String(format: L("%.0f ккал • Б%.1f Ж%.1f У%.1f"), nutrients.calories * factor, nutrients.protein * factor, nutrients.fat * factor, nutrients.carbs * factor))")
             }
         }
     }
@@ -183,7 +183,7 @@ struct MainScreen: View {
                                         .font(AppFont.subheadline)
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
-                                    Text(String(format: String(localized: "%.0f ккал • Б%.1f Ж%.1f У%.1f /100г"), nutrients.calories, nutrients.protein, nutrients.fat, nutrients.carbs))
+                                    Text(String(format: L("%.0f ккал • Б%.1f Ж%.1f У%.1f /100г"), nutrients.calories, nutrients.protein, nutrients.fat, nutrients.carbs))
                                         .font(AppFont.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -463,7 +463,7 @@ struct MainScreen: View {
 
     private var vitaminsSection: some View {
         NutrientProgressSection(
-            title: String(localized: "Витамины"),
+            title: L("Витамины"),
             nutrients: viewModel.todayTotals.vitaminsList(),
             norms: viewModel.dailyNorms?.vitaminsList() ?? [],
             entries: viewModel.todayEntries,
@@ -474,7 +474,7 @@ struct MainScreen: View {
 
     private var mineralsSection: some View {
         NutrientProgressSection(
-            title: String(localized: "Минералы"),
+            title: L("Минералы"),
             nutrients: viewModel.todayTotals.mineralsList(),
             norms: viewModel.dailyNorms?.mineralsList() ?? [],
             entries: viewModel.todayEntries,
@@ -485,7 +485,7 @@ struct MainScreen: View {
 
     private var fatDetailsSection: some View {
         NutrientProgressSection(
-            title: String(localized: "Жиры (детализация)"),
+            title: L("Жиры (детализация)"),
             nutrients: viewModel.todayTotals.fatDetailsList(),
             norms: viewModel.dailyNorms?.fatDetailsList() ?? [],
             entries: viewModel.todayEntries,
@@ -514,11 +514,11 @@ struct MainScreen: View {
                             : food.nutrients
 
                         Divider()
-                        nutrientRow(String(localized: "Калории"), String(format: String(localized: "%.0f ккал"), nutrients.calories))
-                        nutrientRow(String(localized: "Белки"), String(format: String(localized: "%.1f г"), nutrients.protein))
-                        nutrientRow(String(localized: "Жиры"), String(format: String(localized: "%.1f г"), nutrients.fat))
-                        nutrientRow(String(localized: "Углеводы"), String(format: String(localized: "%.1f г"), nutrients.carbs))
-                        nutrientRow(String(localized: "Клетчатка"), String(format: String(localized: "%.1f г"), nutrients.fiber))
+                        nutrientRow(L("Калории"), String(format: L("%.0f ккал"), nutrients.calories))
+                        nutrientRow(L("Белки"), String(format: L("%.1f г"), nutrients.protein))
+                        nutrientRow(L("Жиры"), String(format: L("%.1f г"), nutrients.fat))
+                        nutrientRow(L("Углеводы"), String(format: L("%.1f г"), nutrients.carbs))
+                        nutrientRow(L("Клетчатка"), String(format: L("%.1f г"), nutrients.fiber))
 
                         let fatDetails = nutrients.fatDetailsList().filter { $0.value > 0 }
                         if !fatDetails.isEmpty {

@@ -126,7 +126,7 @@ struct OnboardingScreen: View {
         // the canonical kg / cm the profile stores.
         guard let a = Int(age),
               let rawWeight = Double(weight.replacingOccurrences(of: ",", with: ".")) else {
-            localError = String(localized: "Введите корректные возраст, вес и рост")
+            localError = L("Введите корректные возраст, вес и рост")
             return
         }
         let weightKg: Double
@@ -134,21 +134,21 @@ struct OnboardingScreen: View {
         if isImperial {
             guard let ft = Double(heightFeet.replacingOccurrences(of: ",", with: ".")),
                   let inch = Double(heightInches.isEmpty ? "0" : heightInches.replacingOccurrences(of: ",", with: ".")) else {
-                localError = String(localized: "Введите корректные возраст, вес и рост")
+                localError = L("Введите корректные возраст, вес и рост")
                 return
             }
             weightKg = BodyUnits.poundsToKg(rawWeight)
             heightCmValue = BodyUnits.feetInchesToCm(feet: ft, inches: inch)
         } else {
             guard let h = Double(heightCm.replacingOccurrences(of: ",", with: ".")) else {
-                localError = String(localized: "Введите корректные возраст, вес и рост")
+                localError = L("Введите корректные возраст, вес и рост")
                 return
             }
             weightKg = rawWeight
             heightCmValue = h
         }
         if goals.trimmingCharacters(in: .whitespaces).isEmpty {
-            localError = String(localized: "Опишите ваши цели")
+            localError = L("Опишите ваши цели")
             return
         }
         localError = nil

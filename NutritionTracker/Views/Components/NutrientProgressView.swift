@@ -66,6 +66,7 @@ struct NutrientProgressSection: View {
                             value: nutrient.value,
                             target: norm.value,
                             hasTopFoods: NutrientTopFoods.data[nutrient.key] != nil,
+                            showBar: nutrient.key != "cholesterol",
                             onTap: {
                                 breakdownNutrient = IdentifiableNutrient(key: nutrient.key, name: nutrient.name)
                             },
@@ -104,6 +105,10 @@ struct NutrientProgressBar: View {
     let target: Double
     let hasTopFoods: Bool
     var upperRatio: Double? = nil
+    /// Cholesterol hides the colored bar: dietary cholesterol correlates weakly with blood
+    /// cholesterol, so a permanently "over limit" bar is alarmist — we keep the fact/target
+    /// numbers but drop the scary progress fill.
+    var showBar: Bool = true
     let onTap: () -> Void
     let onInfoTap: () -> Void
 
@@ -145,17 +150,19 @@ struct NutrientProgressBar: View {
                 Text("(\(displayPercentage))")
                     .font(AppFont.captionBold)
             }
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(AppColor.surfaceVariant)
-                        .frame(height: 9)
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(progressColor)
-                        .frame(width: min(CGFloat(percentage) * geometry.size.width, geometry.size.width), height: 9)
+            if showBar {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(AppColor.surfaceVariant)
+                            .frame(height: 9)
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(progressColor)
+                            .frame(width: min(CGFloat(percentage) * geometry.size.width, geometry.size.width), height: 9)
+                    }
                 }
+                .frame(height: 9)
             }
-            .frame(height: 9)
         }
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
@@ -293,7 +300,7 @@ struct NutrientTopFoodsSheet: View {
                                     Text("\(index + 1). \(NutrientTopFoods.localizedName(item.name))")
                                         .font(.body)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                    Text("\(formatFoodValue(item.per100g)) \(NutrientTopFoods.localizedUnit(info.unit)) \(String(format: String(localized: "(%lld%% дн.)"), pct))")
+                                    Text("\(formatFoodValue(item.per100g)) \(NutrientTopFoods.localizedUnit(info.unit)) \(String(format: L("(%lld%% дн.)"), pct))")
                                         .font(.callout)
                                         .fontWeight(.medium)
                                         .foregroundColor(.secondary)

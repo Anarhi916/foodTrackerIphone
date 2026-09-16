@@ -143,7 +143,7 @@ class NutritionRepository {
                 items: items, uiLang: AppLocale.languageEnglishName, useCache: useCache
             )
             if backendResults.isEmpty && cachedResults.isEmpty {
-                throw APIError.apiError(message: String(localized: "Не удалось распознать продукты из описания"))
+                throw APIError.apiError(message: L("Не удалось распознать продукты из описания"))
             }
             for r in backendResults {
                 // Local cache: save on the device by the entered name + English key.
@@ -157,7 +157,7 @@ class NutritionRepository {
         }
 
         if results.isEmpty {
-            throw APIError.apiError(message: String(localized: "Не удалось получить данные о нутриентах для введённых продуктов"))
+            throw APIError.apiError(message: L("Не удалось получить данные о нутриентах для введённых продуктов"))
         }
         return results
     }
