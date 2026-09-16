@@ -174,7 +174,7 @@ struct MainScreen: View {
                     ForEach(suggestions, id: \.keyNormalized) { entry in
                         let nutrients = viewModel.parseNutrients(entry.nutrientsPer100gJson)
                         Button {
-                            quickAddWeight = "100"
+                            quickAddWeight = ""   // start blank so the user types the weight (no need to clear a prefilled 100)
                             quickAddEntry = entry
                         } label: {
                             HStack {
